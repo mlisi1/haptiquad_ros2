@@ -78,7 +78,7 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
 
     estimator.findFeetFrames(joint_names);
 
-    std::vector<std::string> feet_frames = estimator.getFeetFrames();
+    feet_frames = estimator.getFeetFrames();
 
     for (int i=0; i<num_contacts; i++) {
         forces_msg.names[i].data = feet_frames[i];

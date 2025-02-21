@@ -13,6 +13,9 @@ set(DEPS
   std_msgs
   observer_msgs
   momobs
+  sensor_msgs
+  nav_msgs
+  message_filters
 )
 
 # find dependencies
@@ -21,7 +24,7 @@ foreach(dep IN ITEMS ${DEPS})
   find_package(${dep} REQUIRED)
 endforeach()
 
-
+message(STATUS "Check for anymal_msgs...")
 #BAG WRAPPER
 find_package(anymal_msgs QUIET)
 
@@ -33,13 +36,40 @@ if(anymal_msgs_FOUND)
     ament_target_dependencies(momobs_bag 
     ${DEPS} 
     anymal_msgs)
-    # target_link_libraries(executable_1 my_base)
     install(
         TARGETS momobs_bag
         RUNTIME DESTINATION lib/${PROJECT_NAME}
     )
 else()
     message(WARNING "anymal_msgs not found, skipping momobs_bag wrapper")
+endif()
+
+
+
+message(STATUS "Check for mujoco_msgs...")
+#MUJOCO WRAPPER
+find_package(mujoco_msgs QUIET)
+
+if(mujoco_msgs_FOUND)
+    add_executable(momobs_mujoco
+      src/mujoco_wrapper.cpp
+      src/wrapper_base.cpp
+    )
+    ament_target_dependencies(momobs_mujoco
+    ${DEPS} 
+    mujoco_msgs)
+    install(
+        TARGETS momobs_mujoco
+        RUNTIME DESTINATION lib/${PROJECT_NAME}
+    )
+else()
+    message(WARNING "mujoco_msgs not found, skipping momobs_mujoco wrapper")
+endif()
+
+
+
+if (NOT anymal_msgs_FOUND AND NOT mujoco_msgs_FOUND)
+  message(FATAL_ERROR "No wrapper executabl was compiled")
 endif()
 
 
@@ -51,10 +81,6 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-# install(
-#     TARGETS ${PROJECT_NAME}
-#     RUNTIME DESTINATION lib/${PROJECT_NAME}
-# )
 
 install(
   DIRECTORY launch config

@@ -59,7 +59,7 @@ class MomobsWrapperBase: public rclcpp::Node {
         Eigen::VectorXd r_int, r_ext;
         std::vector<Eigen::VectorXd> F;
 
-        std::vector<std::string> joint_names;
+        std::vector<std::string> joint_names, feet_frames;
         std::vector<Eigen::VectorXd> Forces;
 
         momobs::MomentumObserver observer;
