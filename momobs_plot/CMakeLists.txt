@@ -13,9 +13,7 @@ DESTINATION share/${PROJECT_NAME})
 ament_python_install_package(${PROJECT_NAME})
 
 install(
-  PROGRAMS  ${PROJECT_NAME}/plotter.py 
-            ${PROJECT_NAME}/force_plotter.py 
-            ${PROJECT_NAME}/debugger.py
+  PROGRAMS  ${PROJECT_NAME}/residual_plotter.py 
   DESTINATION lib/${PROJECT_NAME}
 )
 
