@@ -11,7 +11,7 @@ set(DEPS
   pinocchio
   Eigen3
   std_msgs
-  observer_msgs
+  momobs_msgs
   momobs
   sensor_msgs
   nav_msgs

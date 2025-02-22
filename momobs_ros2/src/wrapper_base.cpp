@@ -13,14 +13,15 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
         std::bind(&MomobsWrapperBase::descriptionCallback, this, std::placeholders::_1)
     ); 
 
-    gains_sub = this->create_subscription<observer_msgs::msg::ObserverGains>(
+    gains_sub = this->create_subscription<momobs_msgs::msg::ObserverGains>(
         "~/gains",
         10,
         std::bind(&MomobsWrapperBase::gainsCallback, this, std::placeholders::_1)
     );
 
-    residual_publisher = this->create_publisher<observer_msgs::msg::ResidualsStamped>("~/residuals", 10);
-    forces_publisher = this->create_publisher<observer_msgs::msg::EstimatedForces>("~/estimated_forces", 10);
+    residual_publisher = this->create_publisher<momobs_msgs::msg::ResidualsStamped>("~/residuals", 10);
+    residual_error_publisher = this->create_publisher<momobs_msgs::msg::ResidualErrorStamped>("~/residual_errors", 10);
+    forces_publisher = this->create_publisher<momobs_msgs::msg::EstimatedForces>("~/estimated_forces", 10);
 
     //PARAMETERS
     num_contacts = this->declare_parameter<int>("estimator.num_contacts", 0);
@@ -58,9 +59,12 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
 
     residual_msg.r_int.resize(model.nv-6);
     residual_msg.r_ext.resize(6);
-    residual_msg.err_int.resize(model.nv-6);
-    residual_msg.err_ext.resize(6);
     residual_msg.names.resize(model.nv-6);
+
+
+    residual_error_msg.err_int.resize(model.nv-6);
+    residual_error_msg.err_ext.resize(6);
+    residual_error_msg.names.resize(model.nv-6);
 
 
     forces_msg.forces.resize(num_contacts);
@@ -91,7 +95,7 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
 
 
 
-void MomobsWrapperBase::gainsCallback(const observer_msgs::msg::ObserverGains::SharedPtr msg) {
+void MomobsWrapperBase::gainsCallback(const momobs_msgs::msg::ObserverGains::SharedPtr msg) {
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Received gains");
     observer.setInternalGain(msg->k_int.data);
@@ -115,6 +119,25 @@ void MomobsWrapperBase::publishResiduals() {
 
     residual_msg.stamp = current_stamp;
     residual_publisher->publish(residual_msg);
+
+}
+
+
+
+
+void MomobsWrapperBase::publishResidualErrors() {
+
+    for (int i=0; i<err_int.size(); i++) {
+        residual_error_msg.err_int[i] = err_int(i);
+        
+    }
+
+    for (int i=0; i<err_ext.size(); i++) {
+        residual_error_msg.err_ext[i] = err_ext(i);
+    }
+
+    residual_error_msg.stamp = current_stamp;
+    residual_error_publisher->publish(residual_error_msg);
 
 }
 
