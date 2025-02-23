@@ -56,7 +56,7 @@ class PlotContainer(ttk.Frame):
 
 
 	#Updates the plot with the scalars data
-	def update_plot(self, data, label_names, time = None):
+	def update_plot(self, data, label_names, time = None, title = None, color = None, style = None):
 
 		#Initialize plot limit array
 		limit_values = []
@@ -76,24 +76,31 @@ class PlotContainer(ttk.Frame):
 
 			for i in range(len(data)):
 
-				label = label_names[i]
+				if type(color) == type([]):
+					c = color[i]
+				else:
+					c = color
 
-				line, = self.ax.plot(x_values, data[i,:], label=label)
+				if type(style) == type([]):
+					s = style[i]
+				else:
+					s = style
+
+				line, = self.ax.plot(x_values, data[i,:], label=label_names[i], color=c, linestyle=s)
 				self.lines.append(line)
 
-				
 			self.ax.legend(loc="upper right")
 			# self.canvas.draw()
 
 			self.canvas.draw()  # Ensure the canvas is fully drawn
-			self.ax.set_title(self.title)    
+			self.ax.set_title(self.title if title==None else title)    
 
 			self.first_time = False
 			
 
 		else:
 		
-			for i in range(len(data)):
+			for i in range(len(self.lines)):
 				self.lines[i].set_ydata(data[i,:])
 				self.lines[i].set_xdata(x_values)
 				self.ax.draw_artist(self.lines[i])

@@ -123,10 +123,10 @@ class PlotterBase(Node, tk.Tk):
 			height = self.winfo_height() / 2 - 50
 			width = self.winfo_width() / 2 -50
 
-			for i in range(len(self.plots)):
+			for plot in self.plots.values():
 
-				self.plots[i].canvas.get_tk_widget().config(width=width, height=height)
-				self.plots[i].fast_update()
+				plot.canvas.get_tk_widget().config(width=width, height=height)
+				plot.fast_update()
 
 		self.previous_size = curr_size
 
