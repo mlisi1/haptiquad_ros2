@@ -34,6 +34,8 @@ class ForcePlotter(PlotterBase):
 		anymal_error = False
 
 		self.prev_mode = 0
+		self.changed_axis = False
+		self.prev_axis = 0
 
 		self.forces = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
 				 		'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
@@ -288,8 +290,13 @@ class ForcePlotter(PlotterBase):
 		labels = force_labels
 		title = None
 
-		if self.prev_mode != self.mode.get():
+		if self.only_z.get() != self.prev_axis:
+			self.prev_axis = self.only_z.get()
+			self.changed_axis = True
+
+		if self.prev_mode != self.mode.get() or self.changed_axis:
 			self.prev_mode = self.mode.get()
+			self.changed_axis = False
 			for plot in self.plots.values():
 				plot.clear()
 
@@ -342,9 +349,12 @@ class ForcePlotter(PlotterBase):
 
 				if self.only_z.get():
 
-					l = to_plot[2, :].shape
-					only_z = np.array([np.zeros(l), np.zeros(l), to_plot[2, :]])
-					plot.update_plot(only_z, labels[:3], title=title)
+					if self.mode.get() == 5:
+						plot.update_plot(to_plot[-2:, :], comp_labels[-2:], title=title, color=comp_colors, style=comp_style)
+					else:
+						l = to_plot[2, :].shape
+						only_z = np.array([np.zeros(l), np.zeros(l), to_plot[2, :]])
+						plot.update_plot(only_z, labels[:3], title=title)
 
 				else:
 					
