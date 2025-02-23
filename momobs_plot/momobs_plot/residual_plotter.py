@@ -113,6 +113,8 @@ class ResidualPlotter(PlotterBase):
 		self.plots[legs[3]].grid(row=2, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
 		self.ext_plot.grid(row=3, column=0, padx=0, pady=0, 	columnspan=16,	sticky="w")
 
+		self.init_from_params()
+
 
 	def on_resize(self, event):
 

@@ -107,6 +107,9 @@ class ForcePlotter(PlotterBase):
 			self.mujoco_sync = ApproximateTimeSynchronizer(self.mujoco_subs, queue_size=10, slop=0.05)
 			self.mujoco_sync.registerCallback(self.mujoco_callback)
 
+		self.init_from_params()
+
+
 
 	def add_GUI(self):
 		

@@ -13,8 +13,9 @@ class PlotterBase(Node, tk.Tk):
 
 	def __init__(self, node_name):
 
-		self.listening = False
-		self.need_to_update = False
+
+		self.need_to_update = False	
+		self.listening = False	
 		self.autoscale = False
 		self.autoscroll = True
 
@@ -24,8 +25,6 @@ class PlotterBase(Node, tk.Tk):
 		self.protocol('WM_DELETE_WINDOW', self.on_destroy)
 		self.geometry("1920x1080")
 		tk.Tk.wm_title(self, node_name)
-
-
 
 		theme_path = f"{get_package_share_directory('momobs_plot')}/theme/azure.tcl"
 
@@ -65,7 +64,20 @@ class PlotterBase(Node, tk.Tk):
 		self.bind("<Configure>", self.on_resize) 
 		self.on_resize(None)
 
+	
+	def init_from_params(self):
 
+		self.declare_parameter('autoscale', True)
+		self.autoscale_from_start = self.get_parameter('autoscale').get_parameter_value().bool_value
+
+		self.declare_parameter('listening', False)
+		self.listening_from_start = self.get_parameter('listening').get_parameter_value().bool_value
+
+		if self.autoscale_from_start:
+			self.autoscale_butt.invoke()
+
+		if self.listening_from_start:
+			self.listen.invoke()
 
 
 	def set_scroll_range(self):
