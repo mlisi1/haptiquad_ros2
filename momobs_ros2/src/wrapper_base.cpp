@@ -8,7 +8,7 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
 
     description_sub = this->create_subscription<std_msgs::msg::String>(
         // "/robot_description",
-        "/fb/floating_base_description",
+        "/floating_base_description",
         qos,
         std::bind(&MomobsWrapperBase::descriptionCallback, this, std::placeholders::_1)
     ); 
