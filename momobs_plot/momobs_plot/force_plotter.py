@@ -221,11 +221,7 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1)) 
 
 			ngt[c.name] = np.linalg.norm(f[0:2])
-			# self.contacts[c.name] = False if c.state else True
 			t = c.header.stamp.sec + c.header.stamp.nanosec * 1e-9
-			# self.time[c.name] = np.append(self.time[c.name], t)
-			# if self.time[c.name].shape[0] > self.limit:			
-			# 	self.time[c.name] = self.time[c.name][1:]
 			self.gt[c.name][0] = np.hstack((self.gt[c.name][0], f))
 			self.gt[c.name][1] = np.append(self.gt[c.name][1], t)
 			self.gt_est_z[c.name][0] = np.hstack((self.gt_est_z[c.name][0], np.zeros((6,1))))
@@ -264,7 +260,83 @@ class ForcePlotter(PlotterBase):
 		
 
 	def mujoco_callback(self, *msgs):
-		pass
+		
+		if not self.listening:
+			return
+		
+		[mujoco, est] = msgs
+
+		ngt = {}
+		nest = {}
+
+		gt_contacts = {}
+
+		for c in mujoco.contacts:			
+
+			if c.object2_name in legs_names:
+
+				f = np.array([
+					c.contact_force.force.x,	
+					c.contact_force.force.y,	
+					c.contact_force.force.z,	
+					c.contact_force.torque.x,	
+					c.contact_force.torque.y,	
+					c.contact_force.torque.z	
+				]).reshape((6,1)) 
+
+				gt_contacts[c.object2_name] = f
+				# headers[c.object2_name] = c.header.stamp
+
+		for l in legs_names:
+			if not l in gt_contacts.keys():
+				gt_contacts[l] = np.zeros((6,1))
+
+		for l in legs:				
+						
+			f = gt_contacts[f'{l}_FOOT']
+
+			ngt[f'{l}_FOOT'] = np.linalg.norm(f[0:2])
+			t = 0
+
+			self.gt[f'{l}_FOOT'][0] = np.hstack((self.gt[f'{l}_FOOT'][0], f))
+			self.gt[f'{l}_FOOT'][1] = np.append(self.gt[f'{l}_FOOT'][1], t)
+			self.gt_est_z[f'{l}_FOOT'][0] = np.hstack((self.gt_est_z[f'{l}_FOOT'][0], np.zeros((6,1))))
+			self.gt_est_z[f'{l}_FOOT'][0][0][-1] = f[0][0]
+			self.gt_est_z[f'{l}_FOOT'][0][2][-1] = f[1][0]
+			self.gt_est_z[f'{l}_FOOT'][0][4][-1] = f[2][0]
+
+			if self.gt[f'{l}_FOOT'][0].shape[1] > self.limit:
+
+				self.gt[f'{l}_FOOT'][0] = self.gt[f'{l}_FOOT'][0][:,1:]
+				self.gt[f'{l}_FOOT'][1] = self.gt[f'{l}_FOOT'][1][1:]
+
+		for j in range(4):
+
+			force = np.array([	
+					est.forces[j].force.x,
+					est.forces[j].force.y,
+					est.forces[j].force.z,
+					est.forces[j].torque.x,
+					est.forces[j].torque.y,
+					est.forces[j].torque.z,
+				]).reshape((6,1))
+			
+			nest[est.names[j].data] = np.linalg.norm(force[0:2])
+			t = est.header.stamp.sec + est.header.stamp.nanosec * 1e-9
+			self.forces[est.names[j].data][0] = np.hstack((self.forces[est.names[j].data][0], force))
+			self.forces[est.names[j].data][1] = np.append(self.forces[est.names[j].data][1], t)
+			self.gt_est_z[est.names[j].data][0][1][-1] = force[0][0]
+			self.gt_est_z[est.names[j].data][0][3][-1] = force[1][0]
+			self.gt_est_z[est.names[j].data][0][5][-1] = force[2][0]
+			if self.forces[est.names[j].data][0].shape[1] > self.limit:
+				self.forces[est.names[j].data][0] = self.forces[est.names[j].data][0][:, 1:]
+				self.forces[est.names[j].data][1] = self.forces[est.names[j].data][1][1:]
+				self.gt_est_z[est.names[j].data][0] = self.gt_est_z[est.names[j].data][0][:, 1:]
+
+		self.update_stats(ngt, nest)
+		self.need_to_update = True
+		
+
 
 
 	def update_stats(self, ngt, nest):
