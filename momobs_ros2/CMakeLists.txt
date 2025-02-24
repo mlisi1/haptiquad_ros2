@@ -68,7 +68,29 @@ endif()
 
 
 
-if (NOT anymal_msgs_FOUND AND NOT mujoco_msgs_FOUND)
+message(STATUS "Check for mujoco_msgs...")
+#MUJOCO WRAPPER
+find_package(gazebo_msgs QUIET)
+
+if(gazebo_msgs_FOUND)
+    add_executable(momobs_gazebo
+      src/gazebo_wrapper.cpp
+      src/wrapper_base.cpp
+    )
+    ament_target_dependencies(momobs_gazebo
+    ${DEPS} 
+    gazebo_msgs)
+    install(
+        TARGETS momobs_gazebo
+        RUNTIME DESTINATION lib/${PROJECT_NAME}
+    )
+else()
+    message(WARNING "gazebo_msgs not found, skipping momobs_gazebo wrapper")
+endif()
+
+
+
+if (NOT anymal_msgs_FOUND AND NOT mujoco_msgs_FOUND AND NOT gazebo_msgs_FOUND)
   message(FATAL_ERROR "No wrapper executabl was compiled")
 endif()
 
