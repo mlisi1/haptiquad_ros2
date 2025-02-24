@@ -32,6 +32,7 @@ class ForcePlotter(PlotterBase):
 
 		mujoco_error = False
 		anymal_error = False
+		gazebo_error = False
 
 		self.prev_mode = 0
 		self.changed_axis = False
@@ -79,7 +80,13 @@ class ForcePlotter(PlotterBase):
 			mujoco_error = True
 			self.get_logger().warn("mujoco_msgs was not found. The callback will not be enabled")
 
-		if mujoco_error and anymal_error:
+		try:
+			from gazebo_msgs.msg import ContactsState
+		except ImportError:
+			gazebo_error = True
+			self.get_logger().warn("gazebo_msgs was not found. The callback will not be enabled")
+
+		if mujoco_error and anymal_error and gazebo_error:
 			self.get_logger().error("No relevant message packages were found, no callback can be executed. Exiting..")
 			raise RuntimeError
 		
@@ -106,6 +113,22 @@ class ForcePlotter(PlotterBase):
 
 			self.mujoco_sync = ApproximateTimeSynchronizer(self.mujoco_subs, queue_size=10, slop=0.05)
 			self.mujoco_sync.registerCallback(self.mujoco_callback)
+
+		if not gazebo_error:
+
+			self.LF_contact = Subscriber(self, ContactsState, "/contact_force_sensors/LF")
+			self.RF_contact = Subscriber(self, ContactsState, "/contact_force_sensors/RF")
+			self.LH_contact = Subscriber(self, ContactsState, "/contact_force_sensors/LH")
+			self.RH_contact = Subscriber(self, ContactsState, "/contact_force_sensors/RH")
+
+			self.gazebo_subs = [self.LF_contact,
+					   			self.RF_contact,
+								self.LH_contact,
+								self.RH_contact,
+								self.est]
+
+			self.gazebo_sync = ApproximateTimeSynchronizer(self.gazebo_subs, queue_size=50, slop=0.1)
+			self.gazebo_sync.registerCallback(self.gazebo_callback)		
 
 		self.init_from_params()
 
@@ -336,6 +359,84 @@ class ForcePlotter(PlotterBase):
 		self.update_stats(ngt, nest)
 		self.need_to_update = True
 		
+
+
+	def process_gazebo_contact(self, msg, key, ngt):
+
+		if len(msg.states) > 0:
+
+			f = np.array([
+						msg.states[-1].total_wrench.force.x,	
+						msg.states[-1].total_wrench.force.y,	
+						msg.states[-1].total_wrench.force.z,	
+						msg.states[-1].total_wrench.torque.x,	
+						msg.states[-1].total_wrench.torque.y,	
+						msg.states[-1].total_wrench.torque.z	
+					]).reshape((6,1)) 
+			
+		else:
+
+			f = np.zeros(6).reshape((6,1))
+		
+		self.gt[key][0] = np.hstack((self.gt[key][0], f))
+		ngt[key] = np.linalg.norm(f[0:2])
+
+		self.gt_est_z[key][0] = np.hstack((self.gt_est_z[key][0], np.zeros((6,1))))
+		self.gt_est_z[key][0][0][-1] = f[0][0]
+		self.gt_est_z[key][0][2][-1] = f[1][0]
+		self.gt_est_z[key][0][4][-1] = f[2][0]
+
+		if self.gt[key][0].shape[1] > self.limit:
+
+			self.gt[key][0] = self.gt[key][0][:,1:]
+			self.gt[key][1] = self.gt[key][1][1:]
+		
+		return ngt
+
+
+
+	def gazebo_callback(self, *msgs):
+		
+		if not self.listening:
+			return
+		
+		[LF, RF, LH, RH, est] = msgs
+
+		ngt = {}
+		nest = {}
+
+		ngt = self.process_gazebo_contact(LF, 'LF_FOOT', ngt)
+		ngt = self.process_gazebo_contact(RF, 'RF_FOOT', ngt)
+		ngt = self.process_gazebo_contact(LH, 'LH_FOOT', ngt)
+		ngt = self.process_gazebo_contact(RH, 'RH_FOOT', ngt)
+
+
+		for j in range(4):
+
+			force = np.array([	
+					est.forces[j].force.x,
+					est.forces[j].force.y,
+					est.forces[j].force.z,
+					est.forces[j].torque.x,
+					est.forces[j].torque.y,
+					est.forces[j].torque.z,
+				]).reshape((6,1))
+			
+			nest[est.names[j].data] = np.linalg.norm(force[0:2])
+			t = est.header.stamp.sec + est.header.stamp.nanosec * 1e-9
+			self.forces[est.names[j].data][0] = np.hstack((self.forces[est.names[j].data][0], force))
+			self.forces[est.names[j].data][1] = np.append(self.forces[est.names[j].data][1], t)
+			self.gt_est_z[est.names[j].data][0][1][-1] = force[0][0]
+			self.gt_est_z[est.names[j].data][0][3][-1] = force[1][0]
+			self.gt_est_z[est.names[j].data][0][5][-1] = force[2][0]
+			if self.forces[est.names[j].data][0].shape[1] > self.limit:
+				self.forces[est.names[j].data][0] = self.forces[est.names[j].data][0][:, 1:]
+				self.forces[est.names[j].data][1] = self.forces[est.names[j].data][1][1:]
+				self.gt_est_z[est.names[j].data][0] = self.gt_est_z[est.names[j].data][0][:, 1:]
+
+		self.update_stats(ngt, nest)
+		self.need_to_update = True
+
 
 
 
