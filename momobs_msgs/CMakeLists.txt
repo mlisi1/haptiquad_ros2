@@ -18,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ObserverGains.msg"
   "msg/EstimatedForces.msg"
   "msg/ResidualErrorStamped.msg"
+  "msg/FrictionParameters.msg"
   DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
 )
 

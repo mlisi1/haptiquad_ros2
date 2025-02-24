@@ -19,6 +19,12 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
         std::bind(&MomobsWrapperBase::gainsCallback, this, std::placeholders::_1)
     );
 
+    friction_sub = this->create_subscription<momobs_msgs::msg::FrictionParameters>(
+        "~/friction",
+        10,
+        std::bind(&MomobsWrapperBase::frictionCallback, this, std::placeholders::_1)
+    );
+
     residual_publisher = this->create_publisher<momobs_msgs::msg::ResidualsStamped>("~/residuals", 10);
     residual_error_publisher = this->create_publisher<momobs_msgs::msg::ResidualErrorStamped>("~/residual_errors", 10);
     forces_publisher = this->create_publisher<momobs_msgs::msg::EstimatedForces>("~/estimated_forces", 10);
@@ -30,6 +36,17 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
     rescale = this->declare_parameter<bool>("observer.rescale", false);
     expected_dt = this->declare_parameter<double>("observer.expected_dt", 0.0);
     threshold = this->declare_parameter<double>("observer.threshold", 0.0); 
+
+
+    friction    = this->declare_parameter<bool>("observer.friction.friction", false);
+    F_s         = this->declare_parameter<double>("observer.friction.F_s", 0.0);    
+    F_c         = this->declare_parameter<double>("observer.friction.F_c", 0.0);   
+    sigma0      = this->declare_parameter<double>("observer.friction.sigma0", 0.0); 
+    sigma1      = this->declare_parameter<double>("observer.friction.sigma1", 0.0);  
+    sigma2      = this->declare_parameter<double>("observer.friction.sigma2", 0.0);    
+    alpha       = this->declare_parameter<double>("observer.friction.alpha", 0.0);   
+
+    observer.setFrictionParameters(friction, F_s, F_c, sigma0, sigma1, sigma2, alpha); 
 
 }
 
@@ -101,6 +118,14 @@ void MomobsWrapperBase::gainsCallback(const momobs_msgs::msg::ObserverGains::Sha
     observer.setInternalGain(msg->k_int.data);
     observer.setExternalGain(msg->k_ext.data);
 
+}
+
+
+void MomobsWrapperBase::frictionCallback(const momobs_msgs::msg::FrictionParameters::SharedPtr msg) {
+
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Received gains");
+    observer.setFrictionParameters(msg->use_friction.data, msg->f_s.data, msg->f_c.data,
+                                    msg->sigma0.data, msg->sigma1.data, msg->sigma2.data, msg->alpha.data);
 }
 
 

@@ -13,6 +13,8 @@
 #include <momobs_msgs/msg/residual_error_stamped.hpp>
 #include <momobs_msgs/msg/observer_gains.hpp>
 #include <momobs_msgs/msg/estimated_forces.hpp>
+#include <momobs_msgs/msg/friction_parameters.hpp>
+
 
 #include <Eigen/Dense>
 #include <vector>
@@ -28,6 +30,8 @@ class MomobsWrapperBase: public rclcpp::Node {
 
         void descriptionCallback(const std_msgs::msg::String::SharedPtr msg);
         void gainsCallback(const momobs_msgs::msg::ObserverGains::SharedPtr msg);
+        void frictionCallback(const momobs_msgs::msg::FrictionParameters::SharedPtr msg);
+
 
     protected:
     
@@ -43,6 +47,8 @@ class MomobsWrapperBase: public rclcpp::Node {
 
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr description_sub;
         rclcpp::Subscription<momobs_msgs::msg::ObserverGains>::SharedPtr gains_sub;
+        rclcpp::Subscription<momobs_msgs::msg::FrictionParameters>::SharedPtr friction_sub;
+
 
         rclcpp::Publisher<momobs_msgs::msg::ResidualsStamped>::SharedPtr residual_publisher;
         rclcpp::Publisher<momobs_msgs::msg::ResidualErrorStamped>::SharedPtr residual_error_publisher;
@@ -71,9 +77,19 @@ class MomobsWrapperBase: public rclcpp::Node {
 
 
         //PARAMETERS
+        //Time rescaling
         int num_contacts = 0;
         float k_int, k_ext = 1.0;
         bool rescale = false;
         double expected_dt = 0.0;
         double threshold = 0.0;  
+
+        //Friction
+        bool friction = false;
+        double F_s    = 0.0;    // Static (stiction) friction torque [Nm]
+        double F_c    = 0.0;    // Coulomb (dynamic) friction torque [Nm]
+        double sigma0 = 0.0; // Stiffness coefficient [Nm/rad]
+        double sigma1 = 0.0;  // Damping coefficient [Nm·s/rad]
+        double sigma2 = 0.0;    // Viscous friction coefficient [Nm·s/rad]
+        double alpha  = 0.0;    // Transition parameter [s/rad]
 };

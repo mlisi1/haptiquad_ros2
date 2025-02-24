@@ -15,6 +15,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(
   PROGRAMS  ${PROJECT_NAME}/residual_plotter.py 
             ${PROJECT_NAME}/force_plotter.py 
+            ${PROJECT_NAME}/friction_setter.py 
   DESTINATION lib/${PROJECT_NAME}
 )
 
