@@ -92,12 +92,13 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
             for (int j=0; j<num_contacts; j++) {
                 if (contact_name == feet_frames[j]) {
                     is_on_ground[contact_name] = true;
-                    // GTForces_dict[contact_name] <<  contacts->contacts[i].contact_force.force.x,
-                    //                                 contacts->contacts[i].contact_force.force.y,
-                    //                                 contacts->contacts[i].contact_force.force.z,
-                    //                                 contacts->contacts[i].contact_force.torque.x,
-                    //                                 contacts->contacts[i].contact_force.torque.y,
-                    //                                 contacts->contacts[i].contact_force.torque.z;
+                    GT_F[contact_name] = Eigen::VectorXd::Zero(6);
+                    GT_F[contact_name] <<  contacts->contacts[i].contact_force.force.x,
+                                                    contacts->contacts[i].contact_force.force.y,
+                                                    contacts->contacts[i].contact_force.force.z,
+                                                    contacts->contacts[i].contact_force.torque.x,
+                                                    contacts->contacts[i].contact_force.torque.y,
+                                                    contacts->contacts[i].contact_force.torque.z;
                 }
             }
 
@@ -110,7 +111,12 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     F = estimator.calculateForces(r_int, r_ext, orientation);
 
+    std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
+    err_int = gt_r_int - r_int;
+    err_ext = gt_r_ext - r_ext;
+
     publishForces();
+    publishResidualErrors();
 
     last_stamp = joint_state->header.stamp;
 
