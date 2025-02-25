@@ -96,6 +96,7 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
     }
 
     residual_msg.names = joint_names;
+    residual_error_msg.names = joint_names;
 
     estimator.findFeetFrames(joint_names);
 
@@ -173,18 +174,15 @@ void MomobsWrapperBase::publishResidualErrors() {
 void MomobsWrapperBase::publishForces() {
 
     forces_msg.header.stamp = current_stamp;
-
-
-
+    //TODO: Change the message so that it can hold the name of the frame
     for (int i=0; i<num_contacts; i++) {
 
-        forces_msg.forces[i].force.x =  F[i][0];
-        forces_msg.forces[i].force.y =  F[i][1];
-        forces_msg.forces[i].force.z =  F[i][2];
-        forces_msg.forces[i].torque.x = F[i][3];
-        forces_msg.forces[i].torque.y = F[i][4];
-        forces_msg.forces[i].torque.z = F[i][5];
-
+        forces_msg.forces[i].force.x =  F[feet_frames[i]][0];
+        forces_msg.forces[i].force.y =  F[feet_frames[i]][1];
+        forces_msg.forces[i].force.z =  F[feet_frames[i]][2];
+        forces_msg.forces[i].torque.x = F[feet_frames[i]][3];
+        forces_msg.forces[i].torque.y = F[feet_frames[i]][4];
+        forces_msg.forces[i].torque.z = F[feet_frames[i]][5];
 
     }
 

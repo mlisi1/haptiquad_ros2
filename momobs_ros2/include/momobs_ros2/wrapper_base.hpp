@@ -66,11 +66,14 @@ class MomobsWrapperBase: public rclcpp::Node {
         double dt;
 
         Eigen::VectorXd r_int, r_ext;
+        Eigen::VectorXd gt_r_int, gt_r_ext;
         Eigen::VectorXd err_int, err_ext;
-        std::vector<Eigen::VectorXd> F;
+        std::map<std::string, Eigen::VectorXd> F;
+        std::map<std::string, Eigen::VectorXd> GT_F;
 
         std::vector<std::string> joint_names, feet_frames;
-        std::vector<Eigen::VectorXd> Forces;
+   
+        
 
         momobs::MomentumObserver observer;
         momobs::ForceEstimator estimator;

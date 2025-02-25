@@ -30,6 +30,22 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
     }
 
 
+    for (int i=0; i<msg->contacts.size(); i++) {
+
+        Eigen::VectorXd tmp = Eigen::VectorXd::Zero(6);       
+
+        tmp << msg->contacts[i].wrench.force.x,
+                msg->contacts[i].wrench.force.y,
+                msg->contacts[i].wrench.force.z,
+                msg->contacts[i].wrench.torque.x,
+                msg->contacts[i].wrench.torque.y,
+                msg->contacts[i].wrench.torque.z;
+
+        GT_F[msg->contacts[i].name] = tmp;
+
+    }
+
+
     for (int i=0; i<msg->joints.position.size(); i++) {
 
         msg_position_dict[msg->joints.name[i]] =    msg->joints.position[i];
@@ -74,7 +90,12 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
 
     F = estimator.calculateForces(r_int, r_ext, orientation);
 
+    std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
+    err_int = gt_r_int - r_int;
+    err_ext = gt_r_ext - r_ext;
+
     publishForces();
+    publishResidualErrors();
 
     last_stamp = msg->header.stamp;
 
