@@ -101,16 +101,66 @@ GazeboWrapper::GazeboWrapper() : MomobsWrapperBase() {
     is_on_ground["LH_FOOT"] = LH_contact->states.size() == 0 ? false : true;
     is_on_ground["RH_FOOT"] = RH_contact->states.size() == 0 ? false : true;
 
+    for (int i=0; i<num_contacts; i++) {
+        GT_F[feet_frames[i]] = Eigen::VectorXd::Zero(6);
+    }
+
+    if (!LF_contact->states.size()==0) {
+        GT_F["LF_FOOT"] <<  LF_contact->states.back().total_wrench.force.x,
+                            LF_contact->states.back().total_wrench.force.y,
+                            LF_contact->states.back().total_wrench.force.z,
+                            LF_contact->states.back().total_wrench.torque.x,
+                            LF_contact->states.back().total_wrench.torque.y,
+                            LF_contact->states.back().total_wrench.torque.z;
+    }
+
+    if (!RF_contact->states.size()==0) {
+        GT_F["RF_FOOT"] <<  RF_contact->states.back().total_wrench.force.x,
+                            RF_contact->states.back().total_wrench.force.y,
+                            RF_contact->states.back().total_wrench.force.z,
+                            RF_contact->states.back().total_wrench.torque.x,
+                            RF_contact->states.back().total_wrench.torque.y,
+                            RF_contact->states.back().total_wrench.torque.z;
+    }
+
+    if (!LH_contact->states.size()==0) {
+        GT_F["LH_FOOT"] <<  LH_contact->states.back().total_wrench.force.x,
+                            LH_contact->states.back().total_wrench.force.y,
+                            LH_contact->states.back().total_wrench.force.z,
+                            LH_contact->states.back().total_wrench.torque.x,
+                            LH_contact->states.back().total_wrench.torque.y,
+                            LH_contact->states.back().total_wrench.torque.z;
+    }
+
+    if (!RH_contact->states.size()==0) {
+        GT_F["RH_FOOT"] <<  RH_contact->states.back().total_wrench.force.x,
+                            RH_contact->states.back().total_wrench.force.y,
+                            RH_contact->states.back().total_wrench.force.z,
+                            RH_contact->states.back().total_wrench.torque.x,
+                            RH_contact->states.back().total_wrench.torque.y,
+                            RH_contact->states.back().total_wrench.torque.z;
+    }
+
+
+    
+
     estimator.setFeetOnGround(is_on_ground);
     estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
     F = estimator.calculateForces(r_int, r_ext, orientation);
+    std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
+
+    err_int = gt_r_int - r_int;
+    err_ext = gt_r_ext - r_ext;
 
     publishForces();
+    publishResidualErrors();
 
     last_stamp = joint_state->header.stamp;
     
 }
+
+
 
 
 
