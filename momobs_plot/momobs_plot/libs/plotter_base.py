@@ -1,10 +1,13 @@
 from ament_index_python.packages import get_package_share_directory
-from momobs_plot.libs.plot_libs import PlotContainer
+from momobs_plot.libs.dialogs import SaveDialog
 import tkinter as tk
 from tkinter import ttk
 from rclpy.node import Node
 import rclpy
 from threading import Thread
+
+from PIL import Image, ImageTk
+
 
 
 
@@ -26,11 +29,38 @@ class PlotterBase(Node, tk.Tk):
 		self.geometry("1920x1080")
 		tk.Tk.wm_title(self, node_name)
 
+		
+
+
+
+
 		theme_path = f"{get_package_share_directory('momobs_plot')}/theme/azure.tcl"
+		save_icon_path = f"{get_package_share_directory('momobs_plot')}/res/save_icon.png"
+
+		img = Image.open(save_icon_path)
+		self.save_icon = ImageTk.PhotoImage(Image.open(save_icon_path).resize((24,24)))
+		# print(type(save_icon))
+
+		
+
 
 		self.tk.call("source", theme_path)
 		self.tk.call("set_theme", "light")
 		self.previous_size = (0, 0)
+
+
+
+		menu_bar = tk.Menu(self)
+		# File Menu
+		file_menu = tk.Menu(menu_bar, tearoff=0)
+		file_menu.add_command(label="Save figures", command=self.save_plots, image=self.save_icon, compound='left', accelerator="Ctrl+S")
+		self.bind("<Control-s>", lambda event: self.save_plots()) 
+
+		menu_bar.add_cascade(label="File", menu=file_menu)
+		self.config(menu=menu_bar)
+
+
+
 
 		self.declare_parameter('x_lim', 1000)
 		self.limit = self.get_parameter('x_lim').get_parameter_value().integer_value
@@ -171,3 +201,12 @@ class PlotterBase(Node, tk.Tk):
 		self.destroy_node()
 		rclpy.shutdown()
 		self.spin_thread.join()
+
+
+
+	def save_plots(self):
+
+		SaveDialog(self)
+
+
+		

@@ -38,7 +38,7 @@ class ResidualPlotter(PlotterBase):
 					legs[3]: np.empty((3,0))}
 		self.err_ext = np.empty((6,0))
 
-		self.ext_plot.autoscale = True
+		self.plots['External'].autoscale = True
 
 
 		self.residual_sub = self.create_subscription(ResidualsStamped, '/momobs_ros2/residuals', self.callback, 10)
@@ -103,7 +103,7 @@ class ResidualPlotter(PlotterBase):
 			legs[1]:PlotContainer(self, f"Internal Residual - {legs[1]}"),
 			legs[2]:PlotContainer(self, f"Internal Residual - {legs[2]}"),
 			legs[3]:PlotContainer(self, f"Internal Residual - {legs[3]}"),
-
+			'External':PlotContainer(self, "External Residual"),
 		}
 		self.ext_plot = PlotContainer(self, "External Residual")
 
@@ -111,7 +111,7 @@ class ResidualPlotter(PlotterBase):
 		self.plots[legs[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=8,	sticky="w")
 		self.plots[legs[2]].grid(row=1, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
 		self.plots[legs[3]].grid(row=2, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
-		self.ext_plot.grid(row=3, column=0, padx=0, pady=0, 	columnspan=16,	sticky="w")
+		self.plots['External'].grid(row=3, column=0, padx=0, pady=0, 	columnspan=16,	sticky="w")
 
 		self.init_from_params()
 
@@ -135,8 +135,8 @@ class ResidualPlotter(PlotterBase):
 					self.plots[legs[i]].canvas.get_tk_widget().config(width=width, height=height)
 					self.plots[legs[i]].fast_update()
 
-				self.ext_plot.canvas.get_tk_widget().config(width=last_plot_width, height=height)
-				self.ext_plot.fast_update()
+				self.plots['External'].canvas.get_tk_widget().config(width=last_plot_width, height=height)
+				self.plots['External'].fast_update()
 
 			self.previous_size = curr_size
 
@@ -178,11 +178,11 @@ class ResidualPlotter(PlotterBase):
 
 		if self.show_err.get():
 
-			self.ext_plot.update_plot(self.err_ext, label)
+			self.plots['External'].update_plot(self.err_ext, label)
 
 		else:
 			
-			self.ext_plot.update_plot(self.r_ext, label)
+			self.plots['External'].update_plot(self.r_ext, label)
 
 		self.need_to_update = False
 

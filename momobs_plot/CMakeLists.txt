@@ -7,7 +7,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY theme
+install(DIRECTORY theme res
 DESTINATION share/${PROJECT_NAME})
 
 ament_python_install_package(${PROJECT_NAME})
