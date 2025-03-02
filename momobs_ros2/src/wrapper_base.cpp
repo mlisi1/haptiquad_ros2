@@ -40,13 +40,9 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
 
     friction    = this->declare_parameter<bool>("observer.friction.friction", false);
     F_s         = this->declare_parameter<double>("observer.friction.F_s", 0.0);    
-    F_c         = this->declare_parameter<double>("observer.friction.F_c", 0.0);   
-    sigma0      = this->declare_parameter<double>("observer.friction.sigma0", 0.0); 
-    sigma1      = this->declare_parameter<double>("observer.friction.sigma1", 0.0);  
-    sigma2      = this->declare_parameter<double>("observer.friction.sigma2", 0.0);    
-    alpha       = this->declare_parameter<double>("observer.friction.alpha", 0.0);   
+    F_c         = this->declare_parameter<double>("observer.friction.F_c", 0.0);    
 
-    observer.setFrictionParameters(friction, F_s, F_c, sigma0, sigma1, sigma2, alpha); 
+    observer.setFrictionParameters(friction, F_s, F_c); 
 
 }
 
@@ -125,8 +121,7 @@ void MomobsWrapperBase::gainsCallback(const momobs_msgs::msg::ObserverGains::Sha
 void MomobsWrapperBase::frictionCallback(const momobs_msgs::msg::FrictionParameters::SharedPtr msg) {
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Received gains");
-    observer.setFrictionParameters(msg->use_friction.data, msg->f_s.data, msg->f_c.data,
-                                    msg->sigma0.data, msg->sigma1.data, msg->sigma2.data, msg->alpha.data);
+    observer.setFrictionParameters(msg->use_friction.data, msg->f_s.data, msg->f_c.data);
 }
 
 

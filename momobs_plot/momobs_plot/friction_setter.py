@@ -38,18 +38,6 @@ class FrictionSetter(Node, tk.Tk):
 		self.F_c = tk.StringVar()
 		self.F_c.set("0.0")
 
-		self.sigma0 = tk.StringVar()
-		self.sigma0.set("0.0")
-
-		self.sigma1 = tk.StringVar()
-		self.sigma1.set("0.0")
-
-		self.sigma2 = tk.StringVar()
-		self.sigma2.set("0.0")
-
-		self.alpha = tk.StringVar()
-		self.alpha.set("0.0")
-
 
 		ttk.Checkbutton(self, text="Use Friction", variable=self.use_friction, style='Toggle.TButton').grid(row=0, column=0, padx=10, pady=10, columnspan=2)
 		ttk.Label(self, text="Fs:").grid(row=1, column=0, padx=10, pady=10)
@@ -58,21 +46,9 @@ class FrictionSetter(Node, tk.Tk):
 		ttk.Label(self, text="Fc:").grid(row=2, column=0, padx=10, pady=10)
 		ttk.Spinbox(self, from_=0.0, to=10000.0, increment=0.01, textvariable=self.F_c).grid(row=2, column=1, padx=10, pady=10)
 
-		ttk.Label(self, text="sigma0:").grid(row=3, column=0, padx=10, pady=10)
-		ttk.Spinbox(self, from_=0.0, to=10000.0, increment=0.01, textvariable=self.sigma0).grid(row=3, column=1, padx=10, pady=10)
+		ttk.Separator(self, orient=tk.HORIZONTAL).grid(row=3, column=0, columnspan=2, sticky='we', padx=5, pady=10)
 
-		ttk.Label(self, text="sigma1:").grid(row=4, column=0, padx=10, pady=10)
-		ttk.Spinbox(self, from_=0.0, to=10000.0, increment=0.01, textvariable=self.sigma1).grid(row=4, column=1, padx=10, pady=10)
-
-		ttk.Label(self, text="sigma2:").grid(row=5, column=0, padx=10, pady=10)
-		ttk.Spinbox(self, from_=0.0, to=10000.0, increment=0.01, textvariable=self.sigma2).grid(row=5, column=1, padx=10, pady=10)
-
-		ttk.Label(self, text="alpha:").grid(row=6, column=0, padx=10, pady=10)
-		ttk.Spinbox(self, from_=0.0, to=10000.0, increment=0.01, textvariable=self.alpha).grid(row=6, column=1, padx=10, pady=10)
-
-		ttk.Separator(self, orient=tk.HORIZONTAL).grid(row=7, column=0, columnspan=2, sticky='we', padx=5, pady=10)
-
-		ttk.Button(self, text="Send parameters", command=self.send_friction).grid(row=8, column=0, padx=10, pady=10, columnspan=2)
+		ttk.Button(self, text="Send parameters", command=self.send_friction).grid(row=4, column=0, padx=10, pady=10, columnspan=2)
 
 		self.spin_thread = Thread(target=rclpy.spin, args=(self,), daemon=True)
 		self.spin_thread.start()
@@ -84,10 +60,6 @@ class FrictionSetter(Node, tk.Tk):
 		self.friction_msg.use_friction.data = self.use_friction.get()
 		self.friction_msg.f_s.data = float(self.F_s.get())
 		self.friction_msg.f_c.data = float(self.F_c.get())
-		self.friction_msg.sigma0.data = float(self.sigma0.get())
-		self.friction_msg.sigma1.data = float(self.sigma1.get())
-		self.friction_msg.sigma2.data = float(self.sigma2.get())
-		self.friction_msg.alpha.data = float(self.alpha.get())
 
 		self.friction_publisher.publish(self.friction_msg)
 
