@@ -44,6 +44,8 @@ MomobsWrapperBase::MomobsWrapperBase() : rclcpp::Node("momobs_ros2") {
 
     observer.setFrictionParameters(friction, F_s, F_c); 
 
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Initialized base wrapper");
+
 }
 
 
@@ -58,6 +60,15 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
 
     pinocchio::Model model;
     pinocchio::urdf::buildModelFromXML(msg->data, model);
+
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Received pinocchio model with " << model.nv << "DOFs");
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "======================================================");
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Model inertias:");
+    for (int i=0; i<model.inertias.size(); i++) {
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "\n" << model.inertias[i] << "\n");
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "----------------------------------");
+    }
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "=======================================================");
 
     observer.initModel(model);
     observer.setInternalGain(k_int);
@@ -86,10 +97,13 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
     
 
     joint_names.resize(model.nv-6);
-
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint names:");
+    
     for (int i=0; i<joint_names.size(); i++) {
         joint_names[i] = model.names[i+2];
+        RCLCPP_DEBUG_STREAM(this->get_logger(), joint_names[i]);
     }
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "=======================================================");
 
     residual_msg.names = joint_names;
     residual_error_msg.names = joint_names;
@@ -97,10 +111,12 @@ void MomobsWrapperBase::descriptionCallback(const std_msgs::msg::String::SharedP
     estimator.findFeetFrames(joint_names);
 
     feet_frames = estimator.getFeetFrames();
-
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Feet frames:");
     for (int i=0; i<num_contacts; i++) {
         forces_msg.names[i].data = feet_frames[i];
+        RCLCPP_DEBUG_STREAM(this->get_logger(), feet_frames[i]);
     }
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "========================================================");
 
     description_received = true;
     RCLCPP_INFO_STREAM(this->get_logger(), "Description received!");

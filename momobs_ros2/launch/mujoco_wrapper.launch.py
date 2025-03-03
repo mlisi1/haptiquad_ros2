@@ -15,7 +15,8 @@ def generate_launch_description():
         package="momobs_ros2", executable="momobs_mujoco",
         emulate_tty = True,
         # remappings=[('/robot_description', '/fb/floating_base_description')],
-        parameters=[observer_config]
+        parameters=[observer_config],
+
     )  
 
 
