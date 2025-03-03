@@ -78,6 +78,9 @@ class ForcePlotter(PlotterBase):
 								self.legs_prefix[1] + '_' + self.foot_suffix: True, 
 								self.legs_prefix[2] + '_' + self.foot_suffix: True, 
 								self.legs_prefix[3] + '_' + self.foot_suffix: True}
+		
+
+		self.foot_names = [pref + '_' + self.foot_suffix for pref in self.legs_prefix]
 
 		try:
 			from anymal_msgs.msg import AnymalState
@@ -307,7 +310,7 @@ class ForcePlotter(PlotterBase):
 
 		for c in mujoco.contacts:			
 
-			if c.object2_name in legs_names:
+			if c.object2_name in self.foot_names:
 
 				f = np.array([
 					c.contact_force.force.x,	
@@ -321,11 +324,11 @@ class ForcePlotter(PlotterBase):
 				gt_contacts[c.object2_name] = f
 				# headers[c.object2_name] = c.header.stamp
 
-		for l in legs_names:
+		for l in self.foot_names:
 			if not l in gt_contacts.keys():
 				gt_contacts[l] = np.zeros((6,1))
 
-		for l in legs:				
+		for l in self.legs_prefix:				
 						
 			f = gt_contacts[f'{l}_{self.foot_suffix}']
 
