@@ -84,25 +84,25 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     for (int i=0; i<num_contacts; i++) {
         is_on_ground[feet_frames[i]] = false;
+        GT_F[feet_frames[i]] = Eigen::VectorXd::Zero(6);
     }
 
 
     for (int i=0; i<contacts->contacts.size(); i++) {
-            std::string contact_name = contacts->contacts[i].object2_name;
-            for (int j=0; j<num_contacts; j++) {
-                if (contact_name == feet_frames[j]) {
-                    is_on_ground[contact_name] = true;
-                    GT_F[contact_name] = Eigen::VectorXd::Zero(6);
-                    GT_F[contact_name] <<  contacts->contacts[i].contact_force.force.x,
-                                                    contacts->contacts[i].contact_force.force.y,
-                                                    contacts->contacts[i].contact_force.force.z,
-                                                    contacts->contacts[i].contact_force.torque.x,
-                                                    contacts->contacts[i].contact_force.torque.y,
-                                                    contacts->contacts[i].contact_force.torque.z;
-                }
+        std::string contact_name = contacts->contacts[i].object2_name;
+        for (int j=0; j<num_contacts; j++) {
+            if (contact_name == feet_frames[j]) {
+                is_on_ground[contact_name] = true;
+                GT_F[contact_name] <<   contacts->contacts[i].contact_force.force.x,
+                                        contacts->contacts[i].contact_force.force.y,
+                                        contacts->contacts[i].contact_force.force.z,
+                                        contacts->contacts[i].contact_force.torque.x,
+                                        contacts->contacts[i].contact_force.torque.y,
+                                        contacts->contacts[i].contact_force.torque.z;
             }
-
         }
+
+    }
 
 
 
