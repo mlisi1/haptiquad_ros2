@@ -14,8 +14,6 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 
 
-legs = ["LF", "RF", "LH", "RH"]
-legs_names = ["LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT"]
 force_labels = ["Fx", "Fy", "Fz", "Tx", "Ty", "Tz"]
 comp_labels = ["GT X", "EST X", "GT Y", "EST Y", "GT Z", "EST Z"]
 norm_label = ["Norm Error", "", "", "", "", ""]
@@ -30,6 +28,12 @@ class ForcePlotter(PlotterBase):
 
 		PlotterBase.__init__(self, "ForcePlotter")
 
+		self.declare_parameter("foot_suffix", "")
+		self.foot_suffix = self.get_parameter("foot_suffix").get_parameter_value().string_value
+
+		if self.foot_suffix == "":
+			raise RuntimeError("Foot suffix not set")
+
 		mujoco_error = False
 		anymal_error = False
 		gazebo_error = False
@@ -38,35 +42,42 @@ class ForcePlotter(PlotterBase):
 		self.changed_axis = False
 		self.prev_axis = 0
 
-		self.forces = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-				 		'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-		self.gt = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-		self.gt_est_z = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-							'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-							'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-							'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-		self.err = {'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-			  		'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-		self.mse = {'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-			  		'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-					'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
+
+		self.forces = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+				 		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+		self.gt = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+		self.gt_est_z = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+		self.err = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+			  		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+		self.mse = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+			  		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
 		
 		# self.time = {'LF_FOOT': np.empty(0), 'RF_FOOT': np.empty(0), 'LH_FOOT': np.empty(0), 'RH_FOOT': np.empty(0)}
-		self.norm = {	'LF_FOOT': np.empty(0), 
-						'RF_FOOT': np.empty(0), 
-						'LH_FOOT': np.empty(0), 
-						'RH_FOOT': np.empty(0)}
+		self.norm = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
+						self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
+						self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
+						self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
 		
-		self.contacts = {'LF_FOOT': True, 'RF_FOOT': True, 'LH_FOOT': True, 'RH_FOOT': True}
-		self.last_contacts = {'LF_FOOT': True, 'RF_FOOT': True, 'LH_FOOT': True, 'RH_FOOT': True}
+		self.contacts = {	self.legs_prefix[0] + '_' + self.foot_suffix: True, 
+				   			self.legs_prefix[1] + '_' + self.foot_suffix: True, 
+							self.legs_prefix[2] + '_' + self.foot_suffix: True, 
+							self.legs_prefix[3] + '_' + self.foot_suffix: True}
+		self.last_contacts = {	self.legs_prefix[0] + '_' + self.foot_suffix: True, 
+								self.legs_prefix[1] + '_' + self.foot_suffix: True, 
+								self.legs_prefix[2] + '_' + self.foot_suffix: True, 
+								self.legs_prefix[3] + '_' + self.foot_suffix: True}
 
 		try:
 			from anymal_msgs.msg import AnymalState
@@ -173,16 +184,16 @@ class ForcePlotter(PlotterBase):
 		self.only_z_butt.grid(row = 0, column=15, padx = (5,5), pady = 10, sticky="we")
 
 		self.plots = {
-			legs[0]:PlotContainer(self, f"Estimated Forces - {legs[0]}"),
-			legs[1]:PlotContainer(self, f"Estimated Forces - {legs[1]}"),
-			legs[2]:PlotContainer(self, f"Estimated Forces - {legs[2]}"),
-			legs[3]:PlotContainer(self, f"Estimated Forces - {legs[3]}"),
+			self.legs_prefix[0]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[0]}"),
+			self.legs_prefix[1]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[1]}"),
+			self.legs_prefix[2]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[2]}"),
+			self.legs_prefix[3]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[3]}"),
 		}
 
-		self.plots[legs[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[legs[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[legs[2]].grid(row=1, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[legs[3]].grid(row=2, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
+		self.plots[self.legs_prefix[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
+		self.plots[self.legs_prefix[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
+		self.plots[self.legs_prefix[2]].grid(row=1, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
+		self.plots[self.legs_prefix[3]].grid(row=2, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
 
 
 	def start_listening(self):
@@ -196,30 +207,30 @@ class ForcePlotter(PlotterBase):
 
 				plot.clear()
 
-			self.forces = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-				 		'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-			self.gt = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-			self.err = {'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-			self.mse = {'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-						'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
-			self.norm = {	'LF_FOOT': np.empty(0), 
-						'RF_FOOT': np.empty(0), 
-						'LH_FOOT': np.empty(0), 
-						'RH_FOOT': np.empty(0)}
-			self.gt_est_z = {	'LF_FOOT': [np.empty((6,0)), np.empty(0)], 
-								'RF_FOOT': [np.empty((6,0)), np.empty(0)], 
-								'LH_FOOT': [np.empty((6,0)), np.empty(0)], 
-								'RH_FOOT': [np.empty((6,0)), np.empty(0)]}
+			self.forces = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+							self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+			self.gt = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+			self.err = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+			self.mse = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
+			self.norm = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
+			self.gt_est_z = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+								self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+								self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
+								self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
 			# self.time = {'LF_FOOT': np.empty(0), 'RF_FOOT': np.empty(0), 'LH_FOOT': np.empty(0), 'RH_FOOT': np.empty(0)}
 
 			self.show_torques_butt.config(state=tk.DISABLED)	
@@ -316,22 +327,22 @@ class ForcePlotter(PlotterBase):
 
 		for l in legs:				
 						
-			f = gt_contacts[f'{l}_FOOT']
+			f = gt_contacts[f'{l}_{self.foot_suffix}']
 
-			ngt[f'{l}_FOOT'] = np.linalg.norm(f[0:2])
+			ngt[f'{l}_{self.foot_suffix}'] = np.linalg.norm(f[0:2])
 			t = 0
 
-			self.gt[f'{l}_FOOT'][0] = np.hstack((self.gt[f'{l}_FOOT'][0], f))
-			self.gt[f'{l}_FOOT'][1] = np.append(self.gt[f'{l}_FOOT'][1], t)
-			self.gt_est_z[f'{l}_FOOT'][0] = np.hstack((self.gt_est_z[f'{l}_FOOT'][0], np.zeros((6,1))))
-			self.gt_est_z[f'{l}_FOOT'][0][0][-1] = f[0][0]
-			self.gt_est_z[f'{l}_FOOT'][0][2][-1] = f[1][0]
-			self.gt_est_z[f'{l}_FOOT'][0][4][-1] = f[2][0]
+			self.gt[f'{l}_{self.foot_suffix}'][0] = np.hstack((self.gt[f'{l}_{self.foot_suffix}'][0], f))
+			self.gt[f'{l}_{self.foot_suffix}'][1] = np.append(self.gt[f'{l}_{self.foot_suffix}'][1], t)
+			self.gt_est_z[f'{l}_{self.foot_suffix}'][0] = np.hstack((self.gt_est_z[f'{l}_{self.foot_suffix}'][0], np.zeros((6,1))))
+			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][0][-1] = f[0][0]
+			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][2][-1] = f[1][0]
+			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][4][-1] = f[2][0]
 
-			if self.gt[f'{l}_FOOT'][0].shape[1] > self.limit:
+			if self.gt[f'{l}_{self.foot_suffix}'][0].shape[1] > self.limit:
 
-				self.gt[f'{l}_FOOT'][0] = self.gt[f'{l}_FOOT'][0][:,1:]
-				self.gt[f'{l}_FOOT'][1] = self.gt[f'{l}_FOOT'][1][1:]
+				self.gt[f'{l}_{self.foot_suffix}'][0] = self.gt[f'{l}_{self.foot_suffix}'][0][:,1:]
+				self.gt[f'{l}_{self.foot_suffix}'][1] = self.gt[f'{l}_{self.foot_suffix}'][1][1:]
 
 		for j in range(4):
 
@@ -405,10 +416,10 @@ class ForcePlotter(PlotterBase):
 		ngt = {}
 		nest = {}
 
-		ngt = self.process_gazebo_contact(LF, 'LF_FOOT', ngt)
-		ngt = self.process_gazebo_contact(RF, 'RF_FOOT', ngt)
-		ngt = self.process_gazebo_contact(LH, 'LH_FOOT', ngt)
-		ngt = self.process_gazebo_contact(RH, 'RH_FOOT', ngt)
+		ngt = self.process_gazebo_contact(LF, self.legs_prefix[0] + '_' + self.foot_suffix, ngt)
+		ngt = self.process_gazebo_contact(RF, self.legs_prefix[1] + '_' + self.foot_suffix, ngt)
+		ngt = self.process_gazebo_contact(LH, self.legs_prefix[2] + '_' + self.foot_suffix, ngt)
+		ngt = self.process_gazebo_contact(RH, self.legs_prefix[3] + '_' + self.foot_suffix, ngt)
 
 
 		for j in range(4):
@@ -444,20 +455,20 @@ class ForcePlotter(PlotterBase):
 
 		for i in range(4):
 
-			self.err[f'{legs[i]}_FOOT'][0] = self.gt[f'{legs[i]}_FOOT'][0] - self.forces[f'{legs[i]}_FOOT'][0]
-			self.err[f'{legs[i]}_FOOT'][1] = self.gt[f'{legs[i]}_FOOT'][1]
+			self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] - self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
+			self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
 
-			mse = np.mean((self.gt[f'{legs[i]}_FOOT'][0] - self.forces[f'{legs[i]}_FOOT'][0])**2, axis=1).reshape((6,1))
+			mse = np.mean((self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] - self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0])**2, axis=1).reshape((6,1))
 
-			self.mse[f'{legs[i]}_FOOT'][0] = np.hstack((self.mse[f'{legs[i]}_FOOT'][0], np.sqrt(mse)))
-			self.mse[f'{legs[i]}_FOOT'][1] = self.gt[f'{legs[i]}_FOOT'][1]
+			self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = np.hstack((self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0], np.sqrt(mse)))
+			self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
 
-			self.norm[f'{legs[i]}_FOOT'] = np.append(self.norm[f'{legs[i]}_FOOT'], ngt[f'{legs[i]}_FOOT'] - nest[f'{legs[i]}_FOOT'])
+			self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = np.append(self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'], ngt[f'{self.legs_prefix[i]}_{self.foot_suffix}'] - nest[f'{self.legs_prefix[i]}_{self.foot_suffix}'])
 
-			if self.mse[f'{legs[i]}_FOOT'][0].shape[1] > self.limit:
+			if self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0].shape[1] > self.limit:
 
-				self.mse[f'{legs[i]}_FOOT'][0] = self.mse[f'{legs[i]}_FOOT'][0][:, 1:]
-				self.norm[f'{legs[i]}_FOOT'] = self.norm[f'{legs[i]}_FOOT'][1:]			
+				self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0][:, 1:]
+				self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]			
 			
 
 	
@@ -481,40 +492,40 @@ class ForcePlotter(PlotterBase):
 
 			if self.mode.get() == 0:
 
-				to_plot = self.forces[f'{legs[i]}_FOOT'][0]
-				# time = self.forces[f'{legs[i]}_FOOT'][1]
+				to_plot = self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
+				# time = self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
 
 			elif self.mode.get() == 1:
 
-				to_plot = self.gt[f'{legs[i]}_FOOT'][0]
-				# time = self.gt[f'{legs[i]}_FOOT'][1]
-				title = f'Groundtruth forces - {legs[i]}'
+				to_plot = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
+				# time = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
+				title = f'Groundtruth forces - {self.legs_prefix[i]}'
 
 			elif self.mode.get() == 2:
 
-				to_plot = self.err[f'{legs[i]}_FOOT'][0]
-				# time = self.err[f'{legs[i]}_FOOT'][1]
-				title = f'Estimation error - {legs[i]}'
+				to_plot = self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
+				# time = self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
+				title = f'Estimation error - {self.legs_prefix[i]}'
 
 			elif self.mode.get() == 3:
 
-				to_plot = self.mse[f'{legs[i]}_FOOT'][0]				
-				# time = self.mse[f'{legs[i]}_FOOT'][1]
-				title = f'RMSE - {legs[i]}'
+				to_plot = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]				
+				# time = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
+				title = f'RMSE - {self.legs_prefix[i]}'
 
 			elif self.mode.get() == 4:
 
-				to_plot = self.norm[f'{legs[i]}_FOOT']	
+				to_plot = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}']	
 				l = to_plot.shape[0]
 				to_plot = np.array([np.zeros(l), np.zeros(l), to_plot])		
-				# time = self.mse[f'{legs[i]}_FOOT'][1]
+				# time = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
 				labels = norm_label
-				title = f'Norm error - {legs[i]}'
+				title = f'Norm error - {self.legs_prefix[i]}'
 
 			elif self.mode.get() == 5:
 
-				to_plot = self.gt_est_z[f'{legs[i]}_FOOT'][0]
-				title = f'Forces comparison - {legs[i]}'
+				to_plot = self.gt_est_z[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
+				title = f'Forces comparison - {self.legs_prefix[i]}'
 
 				
 			if self.show_torques.get():

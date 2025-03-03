@@ -8,7 +8,6 @@ import numpy as np
 
 from momobs_msgs.msg import ResidualsStamped, ObserverGains, ResidualErrorStamped
 
-legs = ["LF", "RF", "LH", "RH"]
 label = ['Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz']
 
 class ResidualPlotter(PlotterBase):
@@ -19,23 +18,23 @@ class ResidualPlotter(PlotterBase):
 
 		self.joint_names = []
 
-		self.r_int = {legs[0]: np.empty((3,0)), 
-					legs[1]: np.empty((3,0)), 
-					legs[2]: np.empty((3,0)), 
-					legs[3]: np.empty((3,0))}
+		self.r_int = {self.legs_prefix[0]: np.empty((3,0)), 
+					self.legs_prefix[1]: np.empty((3,0)), 
+					self.legs_prefix[2]: np.empty((3,0)), 
+					self.legs_prefix[3]: np.empty((3,0))}
 		
-		self.joint_labels = {legs[0]: [], 
-					legs[1]: [], 
-					legs[2]: [], 
-					legs[3]: []}
+		self.joint_labels = {self.legs_prefix[0]: [], 
+					self.legs_prefix[1]: [], 
+					self.legs_prefix[2]: [], 
+					self.legs_prefix[3]: []}
 
 
 		self.r_ext = np.empty((6,0))
 
-		self.err_int = {legs[0]: np.empty((3,0)), 
-				  	legs[1]: np.empty((3,0)), 
-					legs[2]: np.empty((3,0)), 
-					legs[3]: np.empty((3,0))}
+		self.err_int = {self.legs_prefix[0]: np.empty((3,0)), 
+				  	self.legs_prefix[1]: np.empty((3,0)), 
+					self.legs_prefix[2]: np.empty((3,0)), 
+					self.legs_prefix[3]: np.empty((3,0))}
 		self.err_ext = np.empty((6,0))
 
 		self.plots['External'].autoscale = True
@@ -97,20 +96,20 @@ class ResidualPlotter(PlotterBase):
 		self.show_err_butt.grid(row=0, column=15, padx = (50, 20), pady=10, sticky="w")
 
 
-		self.plots = [PlotContainer(self, f"Internal Residual - {legs[i]}") for i in range(4)]
+		self.plots = [PlotContainer(self, f"Internal Residual - {self.legs_prefix[i]}") for i in range(4)]
 		self.plots = {
-			legs[0]:PlotContainer(self, f"Internal Residual - {legs[0]}"),
-			legs[1]:PlotContainer(self, f"Internal Residual - {legs[1]}"),
-			legs[2]:PlotContainer(self, f"Internal Residual - {legs[2]}"),
-			legs[3]:PlotContainer(self, f"Internal Residual - {legs[3]}"),
+			self.legs_prefix[0]:PlotContainer(self, f"Internal Residual - {self.legs_prefix[0]}"),
+			self.legs_prefix[1]:PlotContainer(self, f"Internal Residual - {self.legs_prefix[1]}"),
+			self.legs_prefix[2]:PlotContainer(self, f"Internal Residual - {self.legs_prefix[2]}"),
+			self.legs_prefix[3]:PlotContainer(self, f"Internal Residual - {self.legs_prefix[3]}"),
 			'External':PlotContainer(self, "External Residual"),
 		}
 		self.ext_plot = PlotContainer(self, "External Residual")
 
-		self.plots[legs[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=8,	sticky="w")
-		self.plots[legs[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=8,	sticky="w")
-		self.plots[legs[2]].grid(row=1, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
-		self.plots[legs[3]].grid(row=2, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
+		self.plots[self.legs_prefix[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=8,	sticky="w")
+		self.plots[self.legs_prefix[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=8,	sticky="w")
+		self.plots[self.legs_prefix[2]].grid(row=1, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
+		self.plots[self.legs_prefix[3]].grid(row=2, column=8, padx=0, pady=0, 	columnspan=8,	sticky="w")
 		self.plots['External'].grid(row=3, column=0, padx=0, pady=0, 	columnspan=16,	sticky="w")
 
 		self.init_from_params()
@@ -132,8 +131,8 @@ class ResidualPlotter(PlotterBase):
 
 				for i in range(4):
 
-					self.plots[legs[i]].canvas.get_tk_widget().config(width=width, height=height)
-					self.plots[legs[i]].fast_update()
+					self.plots[self.legs_prefix[i]].canvas.get_tk_widget().config(width=width, height=height)
+					self.plots[self.legs_prefix[i]].fast_update()
 
 				self.plots['External'].canvas.get_tk_widget().config(width=last_plot_width, height=height)
 				self.plots['External'].fast_update()
@@ -152,15 +151,15 @@ class ResidualPlotter(PlotterBase):
 
 			self.ext_plot.clear()
 
-			self.r_int = {legs[0]: np.empty((3,0)), 
-					legs[1]: np.empty((3,0)), 
-					legs[2]: np.empty((3,0)), 
-					legs[3]: np.empty((3,0))}
+			self.r_int = {self.legs_prefix[0]: np.empty((3,0)), 
+					self.legs_prefix[1]: np.empty((3,0)), 
+					self.legs_prefix[2]: np.empty((3,0)), 
+					self.legs_prefix[3]: np.empty((3,0))}
 			self.r_ext = np.empty((6,0))
-			self.err_int = {legs[0]: np.empty((3,0)), 
-				  	legs[1]: np.empty((3,0)), 
-					legs[2]: np.empty((3,0)), 
-					legs[3]: np.empty((3,0))}
+			self.err_int = {self.legs_prefix[0]: np.empty((3,0)), 
+				  	self.legs_prefix[1]: np.empty((3,0)), 
+					self.legs_prefix[2]: np.empty((3,0)), 
+					self.legs_prefix[3]: np.empty((3,0))}
 			self.err_ext = np.empty((6,0))
 
 	def update_plots(self):
@@ -169,11 +168,11 @@ class ResidualPlotter(PlotterBase):
 
 			if self.show_err.get():
 
-				self.plots[legs[i]].update_plot(self.err_int[legs[i]], self.joint_labels[legs[i]])
+				self.plots[self.legs_prefix[i]].update_plot(self.err_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]])
 
 			else:
 
-				self.plots[legs[i]].update_plot(self.r_int[legs[i]], self.joint_labels[legs[i]])
+				self.plots[self.legs_prefix[i]].update_plot(self.r_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]])
 
 
 		if self.show_err.get():

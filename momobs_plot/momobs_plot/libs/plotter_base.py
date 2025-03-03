@@ -29,26 +29,22 @@ class PlotterBase(Node, tk.Tk):
 		self.geometry("1920x1080")
 		tk.Tk.wm_title(self, node_name)
 
-		
+		self.declare_parameter('legs_prefix', [""])
+		self.legs_prefix = self.get_parameter('legs_prefix').get_parameter_value().string_array_value
 
-
-
+		if (len(self.legs_prefix) > 4):
+			raise RuntimeError("Legs prefix are more than 4 - not supported")
+		if self.legs_prefix == [""]:
+			raise RuntimeError("Leg prefix not specified")
 
 		theme_path = f"{get_package_share_directory('momobs_plot')}/theme/azure.tcl"
 		save_icon_path = f"{get_package_share_directory('momobs_plot')}/res/save_icon.png"
 
-		img = Image.open(save_icon_path)
 		self.save_icon = ImageTk.PhotoImage(Image.open(save_icon_path).resize((24,24)))
-		# print(type(save_icon))
-
-		
-
 
 		self.tk.call("source", theme_path)
 		self.tk.call("set_theme", "light")
 		self.previous_size = (0, 0)
-
-
 
 		menu_bar = tk.Menu(self)
 		# File Menu

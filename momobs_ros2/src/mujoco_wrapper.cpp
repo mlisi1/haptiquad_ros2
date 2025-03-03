@@ -100,8 +100,7 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
                                                     contacts->contacts[i].contact_force.torque.y,
                                                     contacts->contacts[i].contact_force.torque.z;
                 }
-            }
-
+            } 
         }
 
 
