@@ -12,7 +12,7 @@ def generate_launch_description():
 
     observer_config = os.path.join(self_pkg, 'config', 'momobs_mujoco.yaml')
 
-    config_file = DeclareLaunchArgument('config_file', observer_config)
+    config_file = DeclareLaunchArgument('config_file', default_value=observer_config, description="Observer config file")
 
     momobs = Node(
         package="momobs_ros2", executable="momobs_mujoco",
