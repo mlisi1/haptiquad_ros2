@@ -10,7 +10,7 @@ def generate_launch_description():
     self_pkg = get_package_share_directory('momobs_ros2')
     observer_config = os.path.join(self_pkg, 'config', 'momobs_gazebo.yaml')
 
-    config_file = DeclareLaunchArgument('config_file', observer_config)
+    config_file = DeclareLaunchArgument('config_file', default_value=observer_config, description="Observer config file")
 
     momobs = Node(
         package="momobs_ros2", executable="momobs_gazebo",
