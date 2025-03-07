@@ -23,7 +23,7 @@ class PlotContainer(ttk.Frame):
 		self.fig, self.ax = plt.subplots()  
 		self.ax.grid(True)   
 
-		self.fig.subplots_adjust(0.08, 0.104, 0.968, 0.88, 0.2, 0.165)
+		self.fig.subplots_adjust(0.1, 0.144, 0.938, 0.88, 0.2, 0.165)
 
 		#Initialize Matplotlib wrappers and place them
 		self.canvas = FigureCanvasTkAgg(self.fig, master = self)
@@ -56,7 +56,7 @@ class PlotContainer(ttk.Frame):
 
 
 	#Updates the plot with the scalars data
-	def update_plot(self, data, label_names, time = None, title = None, color = None, style = None):
+	def update_plot(self, data, label_names, time = None, title = None, color = None, style = None,  xlabel = None, ylabel = None):
 
 		#Initialize plot limit array
 		limit_values = []
@@ -90,6 +90,8 @@ class PlotContainer(ttk.Frame):
 				self.lines.append(line)
 
 			self.ax.legend(loc="upper right")
+			self.ax.set_xlabel("" if xlabel == None else xlabel, fontsize =14)
+			self.ax.set_ylabel("" if ylabel == None else ylabel, fontsize = 14)
 			# self.canvas.draw()
 
 			self.canvas.draw()  # Ensure the canvas is fully drawn
@@ -104,15 +106,12 @@ class PlotContainer(ttk.Frame):
 				self.lines[i].set_ydata(data[i,:])
 				self.lines[i].set_xdata(x_values)
 				self.ax.draw_artist(self.lines[i])
-			# self.ax.draw_artist(self.lines[i])
-			# self.fig.canvas.blit(self.ax.bbox)
-
 
 			if self.autoscale:
 
 				self.ax.relim()
 				self.ax.autoscale()
-				# self.canvas.draw()
+
 
 			else:
 
@@ -121,7 +120,12 @@ class PlotContainer(ttk.Frame):
 
 			if self.autoscroll_x:
 
-				self.ax.set_xlim(0, array_size)
+				if type(time) == type(None):
+
+					self.ax.set_xlim(0, array_size)
+				else:
+
+					self.ax.set_xlim(time[-1]-self.x_range+0.2, time[-1])
 
 			else:
 

@@ -86,7 +86,7 @@ class SaveDialog(tk.Toplevel):
         if self.save_all.get():
 
             if self.single_image.get():
-
+                
                 images = []
 
                 for i, plot in enumerate(self.root.plots.values()):
@@ -118,25 +118,29 @@ class SaveDialog(tk.Toplevel):
 
                     merged_image.paste(images[4], (-(ext_width-2*width), 2*height))
 
-
+                pass
                 merged_image.save(path)
 
 
 
             else:
 
+                pass
                 for i, plot in enumerate(self.root.plots.values()):
 
                     plot.fig.savefig(os.path.join(path,list(self.root.plots.keys())[i]), transparent=self.transparent.get())
 
         else:
 
+            pass
             for i, plot in enumerate(self.root.plots.values()):
 
                 if self.to_save[i].get():
 
                     plot.fig.savefig(os.path.join(path, list(self.root.plots.keys())[i]), transparent=self.transparent.get())
 
+        
+        self.destroy()
 
 
 

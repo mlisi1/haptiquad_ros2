@@ -22,6 +22,8 @@ class PlotterBase(Node, tk.Tk):
 		self.autoscale = False
 		self.autoscroll = True
 
+		self.start_time = None
+
 		Node.__init__(self, node_name)
 		tk.Tk.__init__(self)
 
@@ -39,8 +41,10 @@ class PlotterBase(Node, tk.Tk):
 
 		theme_path = f"{get_package_share_directory('momobs_plot')}/theme/azure.tcl"
 		save_icon_path = f"{get_package_share_directory('momobs_plot')}/res/save_icon.png"
+		pause_icon_path = f"{get_package_share_directory('momobs_plot')}/res/pause_icon.png"
 
 		self.save_icon = ImageTk.PhotoImage(Image.open(save_icon_path).resize((24,24)))
+		self.pause_icon = ImageTk.PhotoImage(Image.open(pause_icon_path))
 
 		self.tk.call("source", theme_path)
 		self.tk.call("set_theme", "light")
@@ -55,11 +59,15 @@ class PlotterBase(Node, tk.Tk):
 		menu_bar.add_cascade(label="File", menu=file_menu)
 		self.config(menu=menu_bar)
 
+		self.scroll_range = tk.StringVar()
 
 
+		self.declare_parameter('x_lim', 10.0)
+		self.scroll_range.set(str(self.get_parameter('x_lim').get_parameter_value().double_value))
 
-		self.declare_parameter('x_lim', 1000)
-		self.limit = self.get_parameter('x_lim').get_parameter_value().integer_value
+
+		self.declare_parameter('memory_limit', 1000)
+		self.limit = self.get_parameter('memory_limit').get_parameter_value().integer_value
 
 		self.listen = ttk.Checkbutton(self, style='Toggle.TButton', text="Listen Topic", command=self.start_listening)
 		self.listen.grid(row=0, column=0, padx = (50, 5), pady=10, sticky="w")
@@ -80,12 +88,19 @@ class PlotterBase(Node, tk.Tk):
 
 		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=5, sticky="ns", pady = 5, padx = 5)
 
+		self.pause = tk.BooleanVar()
+		self.pause.set(False)
+		self.pause_button = ttk.Checkbutton(self, style='Toggle.TButton', image=self.pause_icon, variable=self.pause)
+		self.pause_button.grid(column=16, row=0, pady=10)
+
 		self.plots = []
 
 		self.spin_thread = Thread(target=rclpy.spin, args=(self,), daemon=True)
 		self.spin_thread.start()
 
 		self.add_GUI()
+
+		self.set_scroll_range()
 
 		self.bind("<Configure>", self.on_resize) 
 		self.on_resize(None)
@@ -184,7 +199,9 @@ class PlotterBase(Node, tk.Tk):
 
 			if self.need_to_update:
 
-				self.update_plots()
+				if not self.pause.get():
+
+					self.update_plots()
 
 
 			self.update()
@@ -203,6 +220,7 @@ class PlotterBase(Node, tk.Tk):
 	def save_plots(self):
 
 		SaveDialog(self)
+
 
 
 		

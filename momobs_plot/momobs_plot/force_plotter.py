@@ -17,9 +17,12 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 force_labels = ["Fx", "Fy", "Fz", "Tx", "Ty", "Tz"]
 comp_labels = ["GT X", "EST X", "GT Y", "EST Y", "GT Z", "EST Z"]
 norm_label = ["Norm Error", "", "", "", "", ""]
-comp_colors = ['#1f77b4', '#1f77b4', '#ff7f0e', '#ff7f0e', '#2ca02c', '#2ca02c']
+# comp_colors = ['#1f77b4', '#1f77b4', '#ff7f0e', '#ff7f0e', '#2ca02c', '#2ca02c']
+comp_colors = ['#1f77b4', '#1c5f8a', '#ff7f0e', '#e85c2a', '#2ca02c', '#78b82a']
 comp_style = ['-', '--', '-', '--', '-', '--']
 
+xlabels = ['Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]']
+ylabels = ['Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Force [N]']
 
 class ForcePlotter(PlotterBase):
 
@@ -64,7 +67,11 @@ class ForcePlotter(PlotterBase):
 					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
 					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
 		
-		# self.time = {'LF_FOOT': np.empty(0), 'RF_FOOT': np.empty(0), 'LH_FOOT': np.empty(0), 'RH_FOOT': np.empty(0)}
+		self.time = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
+			   			self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
+						self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
+						self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
+		
 		self.norm = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
 						self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
 						self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
@@ -234,8 +241,10 @@ class ForcePlotter(PlotterBase):
 								self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
 								self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
 								self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			# self.time = {'LF_FOOT': np.empty(0), 'RF_FOOT': np.empty(0), 'LH_FOOT': np.empty(0), 'RH_FOOT': np.empty(0)}
-
+			self.time = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
+							self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
 			self.show_torques_butt.config(state=tk.DISABLED)	
 
 	def bag_callback(self, *msgs):
@@ -258,7 +267,6 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1)) 
 
 			ngt[c.name] = np.linalg.norm(f[0:2])
-			t = c.header.stamp.sec + c.header.stamp.nanosec * 1e-9
 			self.gt[c.name][0] = np.hstack((self.gt[c.name][0], f))
 			self.gt[c.name][1] = np.append(self.gt[c.name][1], t)
 			self.gt_est_z[c.name][0] = np.hstack((self.gt_est_z[c.name][0], np.zeros((6,1))))
@@ -268,6 +276,13 @@ class ForcePlotter(PlotterBase):
 			if self.gt[c.name][0].shape[1] > self.limit:
 				self.gt[c.name][0] = self.gt[c.name][0][:,1:]
 				self.gt[c.name][1] = self.gt[c.name][1][1:]
+
+			t = c.header.stamp.sec + 1e-9 * c.header.stamp.nanosec
+			if self.start_time == None:
+				self.start_time = t			
+			
+			normalized_time = t-self.start_time
+			self.time[c.name] = np.append(self.time[c.name], normalized_time)
 
 		for j in range(4):
 
@@ -333,7 +348,13 @@ class ForcePlotter(PlotterBase):
 			f = gt_contacts[f'{l}_{self.foot_suffix}']
 
 			ngt[f'{l}_{self.foot_suffix}'] = np.linalg.norm(f[0:2])
-			t = 0
+			
+			t = mujoco.header.stamp.sec + 1e-9 * mujoco.header.stamp.nanosec
+			if self.start_time == None:
+				self.start_time = t			
+			
+			normalized_time = t-self.start_time
+			self.time[f'{l}_{self.foot_suffix}'] = np.append(self.time[f'{l}_{self.foot_suffix}'], normalized_time)
 
 			self.gt[f'{l}_{self.foot_suffix}'][0] = np.hstack((self.gt[f'{l}_{self.foot_suffix}'][0], f))
 			self.gt[f'{l}_{self.foot_suffix}'][1] = np.append(self.gt[f'{l}_{self.foot_suffix}'][1], t)
@@ -399,6 +420,13 @@ class ForcePlotter(PlotterBase):
 		self.gt_est_z[key][0][0][-1] = f[0][0]
 		self.gt_est_z[key][0][2][-1] = f[1][0]
 		self.gt_est_z[key][0][4][-1] = f[2][0]
+
+		t = msg.header.stamp.sec + 1e-9 * msg.header.stamp.nanosec
+		if self.start_time == None:
+			self.start_time = t			
+		
+		normalized_time = t-self.start_time
+		self.time[key] = np.append(self.time[key], normalized_time)
 
 		if self.gt[key][0].shape[1] > self.limit:
 
@@ -471,7 +499,8 @@ class ForcePlotter(PlotterBase):
 			if self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0].shape[1] > self.limit:
 
 				self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0][:, 1:]
-				self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]			
+				self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]		
+				self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]
 			
 
 	
@@ -491,7 +520,9 @@ class ForcePlotter(PlotterBase):
 				plot.clear()
 
 
-		for i, plot in enumerate(self.plots.values()):				
+		for i, plot in enumerate(self.plots.values()):		
+
+			time = self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}']		
 
 			if self.mode.get() == 0:
 
@@ -529,31 +560,36 @@ class ForcePlotter(PlotterBase):
 
 				to_plot = self.gt_est_z[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
 				title = f'Forces comparison - {self.legs_prefix[i]}'
+			
+
+			if not time.shape[0] == to_plot.shape[1]:
+
+				continue
 
 				
 			if self.show_torques.get():
 
-				plot.update_plot(to_plot, labels, title=title)
+				plot.update_plot(to_plot, labels, title=title, xlabel= xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
 
 			else:						
 
 				if self.only_z.get():
 
 					if self.mode.get() == 5:
-						plot.update_plot(to_plot[-2:, :], comp_labels[-2:], title=title, color=comp_colors, style=comp_style)
+						plot.update_plot(to_plot[-2:, :], comp_labels[-2:], title=title, color=comp_colors, style=comp_style, xlabel=xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
 					else:
 						l = to_plot[2, :].shape
 						only_z = np.array([np.zeros(l), np.zeros(l), to_plot[2, :]])
-						plot.update_plot(only_z, labels[:3], title=title)
+						plot.update_plot(only_z, labels[:3], title=title, xlabel=xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
 
 				else:
 					
 					if self.mode.get() == 5:
-						plot.update_plot(to_plot, comp_labels, title=title, color=comp_colors, style=comp_style)		
+						plot.update_plot(to_plot, comp_labels, title=title, color=comp_colors, style=comp_style, xlabel = xlabels[self.mode.get()], ylabel = ylabels[self.mode.get()], time = time)		
 			
 					else:
 			
-						plot.update_plot(to_plot[:3, :], labels[:3],title=title)
+						plot.update_plot(to_plot[:3, :], labels[:3],title=title, xlabel = xlabels[self.mode.get()], ylabel = ylabels[self.mode.get()], time = time)
 
 		self.need_to_update = False
 
