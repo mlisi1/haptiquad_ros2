@@ -11,13 +11,13 @@ from momobs_msgs.msg import EstimatedForces
 from message_filters import Subscriber, TimeSynchronizer, ApproximateTimeSynchronizer
 
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from copy import deepcopy
 
 
 
 force_labels = ["Fx", "Fy", "Fz", "Tx", "Ty", "Tz"]
 comp_labels = ["GT X", "EST X", "GT Y", "EST Y", "GT Z", "EST Z"]
 norm_label = ["Norm Error", "", "", "", "", ""]
-# comp_colors = ['#1f77b4', '#1f77b4', '#ff7f0e', '#ff7f0e', '#2ca02c', '#2ca02c']
 comp_colors = ['#1f77b4', '#1c5f8a', '#ff7f0e', '#e85c2a', '#2ca02c', '#78b82a']
 comp_style = ['-', '--', '-', '--', '-', '--']
 
@@ -44,50 +44,22 @@ class ForcePlotter(PlotterBase):
 		self.prev_mode = 0
 		self.changed_axis = False
 		self.prev_axis = 0
+		self.foot_names = []
+		self.forces, self.gt, self.gt_est, self.err, self.rmse, self.time, self.norm = {}, {}, {}, {}, {}, {}, {}
+		self.frozen_data = None
+		
+		for pref in self.legs_prefix:
 
+			key = pref + '_' + self.foot_suffix
+			self.forces[key] = np.empty((6,0))
+			self.gt[key] = np.empty((6,0))
+			self.gt_est[key] = np.empty((6,0))
+			self.err[key] = np.empty((6,0))
+			self.rmse[key] = np.empty((6,0))
+			self.time[key] = np.empty(0)
+			self.norm[key] = np.empty(0)
+			self.foot_names.append(key)
 
-		self.forces = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-				 		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-		self.gt = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-		self.gt_est_z = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-		self.err = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-			  		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-		self.mse = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-			  		self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-					self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-		
-		self.time = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
-			   			self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
-						self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
-						self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
-		
-		self.norm = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
-						self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
-						self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
-						self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
-		
-		self.contacts = {	self.legs_prefix[0] + '_' + self.foot_suffix: True, 
-				   			self.legs_prefix[1] + '_' + self.foot_suffix: True, 
-							self.legs_prefix[2] + '_' + self.foot_suffix: True, 
-							self.legs_prefix[3] + '_' + self.foot_suffix: True}
-		self.last_contacts = {	self.legs_prefix[0] + '_' + self.foot_suffix: True, 
-								self.legs_prefix[1] + '_' + self.foot_suffix: True, 
-								self.legs_prefix[2] + '_' + self.foot_suffix: True, 
-								self.legs_prefix[3] + '_' + self.foot_suffix: True}
-		
-
-		self.foot_names = [pref + '_' + self.foot_suffix for pref in self.legs_prefix]
 
 		try:
 			from anymal_msgs.msg import AnymalState
@@ -217,34 +189,17 @@ class ForcePlotter(PlotterBase):
 
 				plot.clear()
 
-			self.forces = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-							self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			self.gt = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			self.err = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			self.mse = {self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-						self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			self.norm = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
-			self.gt_est_z = {	self.legs_prefix[0] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-								self.legs_prefix[1] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-								self.legs_prefix[2] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)], 
-								self.legs_prefix[3] + '_' + self.foot_suffix: [np.empty((6,0)), np.empty(0)]}
-			self.time = {	self.legs_prefix[0] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[1] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[2] + '_' + self.foot_suffix: np.empty(0), 
-							self.legs_prefix[3] + '_' + self.foot_suffix: np.empty(0)}
+			for pref in self.legs_prefix:
+
+				key = pref + '_' + self.foot_suffix
+				self.forces[key] = np.empty((6,0))
+				self.gt[key] = np.empty((6,0))
+				self.gt_est[key] = np.empty((6,0))
+				self.err[key] = np.empty((6,0))
+				self.rmse[key] = np.empty((6,0))
+				self.time[key] = np.empty(0)
+				self.norm[key] = np.empty(0)
+
 			self.show_torques_butt.config(state=tk.DISABLED)	
 
 	def bag_callback(self, *msgs):
@@ -267,15 +222,14 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1)) 
 
 			ngt[c.name] = np.linalg.norm(f[0:2])
-			self.gt[c.name][0] = np.hstack((self.gt[c.name][0], f))
-			self.gt[c.name][1] = np.append(self.gt[c.name][1], t)
-			self.gt_est_z[c.name][0] = np.hstack((self.gt_est_z[c.name][0], np.zeros((6,1))))
-			self.gt_est_z[c.name][0][0][-1] = f[0][0]
-			self.gt_est_z[c.name][0][2][-1] = f[1][0]
-			self.gt_est_z[c.name][0][4][-1] = f[2][0]
-			if self.gt[c.name][0].shape[1] > self.limit:
-				self.gt[c.name][0] = self.gt[c.name][0][:,1:]
-				self.gt[c.name][1] = self.gt[c.name][1][1:]
+			self.gt[c.name] = np.hstack((self.gt[c.name], f))
+			self.gt_est[c.name] = np.hstack((self.gt_est[c.name], np.zeros((6,1))))
+			self.gt_est[c.name][0][-1] = f[0][0]
+			self.gt_est[c.name][2][-1] = f[1][0]
+			self.gt_est[c.name][4][-1] = f[2][0]
+
+			if self.gt[c.name].shape[1] > self.limit:
+				self.gt[c.name] = self.gt[c.name][:,1:]
 
 			t = c.header.stamp.sec + 1e-9 * c.header.stamp.nanosec
 			if self.start_time == None:
@@ -296,19 +250,15 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1))
 			
 			nest[est.names[j].data] = np.linalg.norm(force[0:2])
-			t = est.header.stamp.sec + est.header.stamp.nanosec * 1e-9
-			self.forces[est.names[j].data][0] = np.hstack((self.forces[est.names[j].data][0], force))
-			self.forces[est.names[j].data][1] = np.append(self.forces[est.names[j].data][1], t)
-			self.gt_est_z[est.names[j].data][0][1][-1] = force[0][0]
-			self.gt_est_z[est.names[j].data][0][3][-1] = force[1][0]
-			self.gt_est_z[est.names[j].data][0][5][-1] = force[2][0]
-			if self.forces[est.names[j].data][0].shape[1] > self.limit:
-				self.forces[est.names[j].data][0] = self.forces[est.names[j].data][0][:, 1:]
-				self.forces[est.names[j].data][1] = self.forces[est.names[j].data][1][1:]
-				self.gt_est_z[est.names[j].data][0] = self.gt_est_z[est.names[j].data][0][:, 1:]
+			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
+			self.gt_est[est.names[j].data][1][-1] = force[0][0]
+			self.gt_est[est.names[j].data][3][-1] = force[1][0]
+			self.gt_est[est.names[j].data][5][-1] = force[2][0]
+			if self.forces[est.names[j].data].shape[1] > self.limit:
+				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
+				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
 
 		self.update_stats(ngt, nest)
-		self.need_to_update = True
 		
 
 	def mujoco_callback(self, *msgs):
@@ -337,36 +287,33 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1)) 
 
 				gt_contacts[c.object2_name] = f
-				# headers[c.object2_name] = c.header.stamp
 
-		for l in self.foot_names:
-			if not l in gt_contacts.keys():
-				gt_contacts[l] = np.zeros((6,1))
+		for key in self.foot_names:
+			if not key in gt_contacts.keys():
+				gt_contacts[key] = np.zeros((6,1))
 
-		for l in self.legs_prefix:				
+		for key in self.foot_names:				
 						
-			f = gt_contacts[f'{l}_{self.foot_suffix}']
+			f = gt_contacts[key]
 
-			ngt[f'{l}_{self.foot_suffix}'] = np.linalg.norm(f[0:2])
+			ngt[key] = np.linalg.norm(f[0:2])
 			
 			t = mujoco.header.stamp.sec + 1e-9 * mujoco.header.stamp.nanosec
 			if self.start_time == None:
 				self.start_time = t			
 			
 			normalized_time = t-self.start_time
-			self.time[f'{l}_{self.foot_suffix}'] = np.append(self.time[f'{l}_{self.foot_suffix}'], normalized_time)
+			self.time[key] = np.append(self.time[key], normalized_time)
 
-			self.gt[f'{l}_{self.foot_suffix}'][0] = np.hstack((self.gt[f'{l}_{self.foot_suffix}'][0], f))
-			self.gt[f'{l}_{self.foot_suffix}'][1] = np.append(self.gt[f'{l}_{self.foot_suffix}'][1], t)
-			self.gt_est_z[f'{l}_{self.foot_suffix}'][0] = np.hstack((self.gt_est_z[f'{l}_{self.foot_suffix}'][0], np.zeros((6,1))))
-			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][0][-1] = f[0][0]
-			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][2][-1] = f[1][0]
-			self.gt_est_z[f'{l}_{self.foot_suffix}'][0][4][-1] = f[2][0]
+			self.gt[key] = np.hstack((self.gt[key], f))
+			self.gt_est[key] = np.hstack((self.gt_est[key], np.zeros((6,1))))
+			self.gt_est[key][0][-1] = f[0][0]
+			self.gt_est[key][2][-1] = f[1][0]
+			self.gt_est[key][4][-1] = f[2][0]
 
-			if self.gt[f'{l}_{self.foot_suffix}'][0].shape[1] > self.limit:
+			if self.gt[key].shape[1] > self.limit:
 
-				self.gt[f'{l}_{self.foot_suffix}'][0] = self.gt[f'{l}_{self.foot_suffix}'][0][:,1:]
-				self.gt[f'{l}_{self.foot_suffix}'][1] = self.gt[f'{l}_{self.foot_suffix}'][1][1:]
+				self.gt[key] = self.gt[key][:,1:]
 
 		for j in range(4):
 
@@ -380,19 +327,15 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1))
 			
 			nest[est.names[j].data] = np.linalg.norm(force[0:2])
-			t = est.header.stamp.sec + est.header.stamp.nanosec * 1e-9
-			self.forces[est.names[j].data][0] = np.hstack((self.forces[est.names[j].data][0], force))
-			self.forces[est.names[j].data][1] = np.append(self.forces[est.names[j].data][1], t)
-			self.gt_est_z[est.names[j].data][0][1][-1] = force[0][0]
-			self.gt_est_z[est.names[j].data][0][3][-1] = force[1][0]
-			self.gt_est_z[est.names[j].data][0][5][-1] = force[2][0]
-			if self.forces[est.names[j].data][0].shape[1] > self.limit:
-				self.forces[est.names[j].data][0] = self.forces[est.names[j].data][0][:, 1:]
-				self.forces[est.names[j].data][1] = self.forces[est.names[j].data][1][1:]
-				self.gt_est_z[est.names[j].data][0] = self.gt_est_z[est.names[j].data][0][:, 1:]
+			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
+			self.gt_est[est.names[j].data][1][-1] = force[0][0]
+			self.gt_est[est.names[j].data][3][-1] = force[1][0]
+			self.gt_est[est.names[j].data][5][-1] = force[2][0]
+			if self.forces[est.names[j].data].shape[1] > self.limit:
+				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
+				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
 
 		self.update_stats(ngt, nest)
-		self.need_to_update = True
 		
 
 
@@ -413,13 +356,13 @@ class ForcePlotter(PlotterBase):
 
 			f = np.zeros(6).reshape((6,1))
 		
-		self.gt[key][0] = np.hstack((self.gt[key][0], f))
+		self.gt[key] = np.hstack((self.gt[key], f))
 		ngt[key] = np.linalg.norm(f[0:2])
 
-		self.gt_est_z[key][0] = np.hstack((self.gt_est_z[key][0], np.zeros((6,1))))
-		self.gt_est_z[key][0][0][-1] = f[0][0]
-		self.gt_est_z[key][0][2][-1] = f[1][0]
-		self.gt_est_z[key][0][4][-1] = f[2][0]
+		self.gt_est[key] = np.hstack((self.gt_est[key], np.zeros((6,1))))
+		self.gt_est[key][0][-1] = f[0][0]
+		self.gt_est[key][2][-1] = f[1][0]
+		self.gt_est[key][4][-1] = f[2][0]
 
 		t = msg.header.stamp.sec + 1e-9 * msg.header.stamp.nanosec
 		if self.start_time == None:
@@ -428,10 +371,9 @@ class ForcePlotter(PlotterBase):
 		normalized_time = t-self.start_time
 		self.time[key] = np.append(self.time[key], normalized_time)
 
-		if self.gt[key][0].shape[1] > self.limit:
+		if self.gt[key].shape[1] > self.limit:
 
-			self.gt[key][0] = self.gt[key][0][:,1:]
-			self.gt[key][1] = self.gt[key][1][1:]
+			self.gt[key] = self.gt[key][:,1:]
 		
 		return ngt
 
@@ -447,10 +389,10 @@ class ForcePlotter(PlotterBase):
 		ngt = {}
 		nest = {}
 
-		ngt = self.process_gazebo_contact(LF, self.legs_prefix[0] + '_' + self.foot_suffix, ngt)
-		ngt = self.process_gazebo_contact(RF, self.legs_prefix[1] + '_' + self.foot_suffix, ngt)
-		ngt = self.process_gazebo_contact(LH, self.legs_prefix[2] + '_' + self.foot_suffix, ngt)
-		ngt = self.process_gazebo_contact(RH, self.legs_prefix[3] + '_' + self.foot_suffix, ngt)
+		ngt = self.process_gazebo_contact(LF, self.foot_names[0], ngt)
+		ngt = self.process_gazebo_contact(RF, self.foot_names[1], ngt)
+		ngt = self.process_gazebo_contact(LH, self.foot_names[2], ngt)
+		ngt = self.process_gazebo_contact(RH, self.foot_names[3], ngt)
 
 
 		for j in range(4):
@@ -465,19 +407,16 @@ class ForcePlotter(PlotterBase):
 				]).reshape((6,1))
 			
 			nest[est.names[j].data] = np.linalg.norm(force[0:2])
-			t = est.header.stamp.sec + est.header.stamp.nanosec * 1e-9
-			self.forces[est.names[j].data][0] = np.hstack((self.forces[est.names[j].data][0], force))
-			self.forces[est.names[j].data][1] = np.append(self.forces[est.names[j].data][1], t)
-			self.gt_est_z[est.names[j].data][0][1][-1] = force[0][0]
-			self.gt_est_z[est.names[j].data][0][3][-1] = force[1][0]
-			self.gt_est_z[est.names[j].data][0][5][-1] = force[2][0]
-			if self.forces[est.names[j].data][0].shape[1] > self.limit:
-				self.forces[est.names[j].data][0] = self.forces[est.names[j].data][0][:, 1:]
-				self.forces[est.names[j].data][1] = self.forces[est.names[j].data][1][1:]
-				self.gt_est_z[est.names[j].data][0] = self.gt_est_z[est.names[j].data][0][:, 1:]
+			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
+			self.gt_est[est.names[j].data][1][-1] = force[0][0]
+			self.gt_est[est.names[j].data][3][-1] = force[1][0]
+			self.gt_est[est.names[j].data][5][-1] = force[2][0]
+			if self.forces[est.names[j].data].shape[1] > self.limit:
+				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
+				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
 
 		self.update_stats(ngt, nest)
-		self.need_to_update = True
+
 
 
 
@@ -486,28 +425,93 @@ class ForcePlotter(PlotterBase):
 
 		for i in range(4):
 
-			self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] - self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
-			self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
+			key = self.foot_names[i]
 
-			mse = np.mean((self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] - self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0])**2, axis=1).reshape((6,1))
+			self.err[key] = self.gt[key] - self.forces[key]
 
-			self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = np.hstack((self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0], np.sqrt(mse)))
-			self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1] = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
+			mse = np.mean((self.gt[key] - self.forces[key])**2, axis=1).reshape((6,1))
 
-			self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = np.append(self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'], ngt[f'{self.legs_prefix[i]}_{self.foot_suffix}'] - nest[f'{self.legs_prefix[i]}_{self.foot_suffix}'])
+			self.rmse[key] = np.hstack((self.rmse[key], np.sqrt(mse)))
 
-			if self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0].shape[1] > self.limit:
+			self.norm[key] = np.append(self.norm[key], ngt[key] - nest[key])
 
-				self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0] = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0][:, 1:]
-				self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]		
-				self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}'] = self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1:]
+			if self.rmse[key].shape[1] > self.limit:
+
+				self.rmse[key] = self.rmse[key][:, 1:]
+				self.norm[key] = self.norm[key][1:]		
+				self.time[key] = self.time[key][1:]
+
+
+
+	def process_mode(self, i):
+
+		key = self.foot_names[i]
+		mode = self.mode.get()
+		labels = force_labels
+		colors = None		
+		style = None
+		pause = self.pause.get()
+		time = self.time[key] if not pause else self.frozen_data['time'][key]
+
+		if mode == 0:
+			
+			to_plot = self.forces[key] if not pause else self.frozen_data['forces'][key]
+			title = f'Estimated forces - {self.legs_prefix[i]}'
+
+		elif mode == 1:
+
+			to_plot = self.gt[key] if not pause else self.frozen_data['gt'][key]
+			title = f'Groundtruth forces - {self.legs_prefix[i]}'
+
+		elif mode == 2:
+
+			to_plot = self.err[key] if not pause else self.frozen_data['error'][key]
+			title = f'Estimation error - {self.legs_prefix[i]}'
+
+		elif mode == 3:
+
+			to_plot = self.rmse[key] if not pause else self.frozen_data['rmse'][key]			
+			title = f'RMSE - {self.legs_prefix[i]}'
+
+		elif mode == 4:
+
+			to_plot = self.norm[key] if not pause else self.frozen_data['norm'][key]
+			l = to_plot.shape[0]
+			to_plot = np.array([np.zeros(l), np.zeros(l), to_plot])		
+			labels = norm_label
+			title = f'Norm error - {self.legs_prefix[i]}'
+
+		elif mode == 5:
+
+			to_plot = self.gt_est[key] if not pause else self.frozen_data['comp'][key]
+			title = f'Forces comparison - {self.legs_prefix[i]}'
+			colors = comp_colors
+			labels = comp_labels
+			style = comp_style
+
+			if self.only_z.get() and not self.show_torques.get():
+
+				to_plot = to_plot[-2:, :]
+				labels = comp_labels[-2:]
+
+		if not self.show_torques.get() and not self.only_z.get() and not mode == 5:
+
+			to_plot = to_plot[:3,:]
+			labels = labels[:3]
+
+		if self.only_z.get() and not mode in [4,5]:
+
+			l = to_plot[2, :].shape
+			to_plot = np.array([np.zeros(l), np.zeros(l), to_plot[2, :]])
+			labels = labels[:3]
+
+
+		return to_plot, title, labels, colors, time, style
 			
 
 	
 	def update_plots(self):
 
-		labels = force_labels
-		title = None
 
 		if self.only_z.get() != self.prev_axis:
 			self.prev_axis = self.only_z.get()
@@ -519,92 +523,33 @@ class ForcePlotter(PlotterBase):
 			for plot in self.plots.values():
 				plot.clear()
 
+		if self.pause.get() and type(self.frozen_data) == type(None):
+			
+			self.frozen_data = {}
+			self.frozen_data['forces'] = deepcopy(self.forces)
+			self.frozen_data['gt'] = deepcopy(self.gt)
+			self.frozen_data['error'] = deepcopy(self.err)
+			self.frozen_data['rmse'] = deepcopy(self.rmse)
+			self.frozen_data['norm'] = deepcopy(self.norm)
+			self.frozen_data['comp'] = deepcopy(self.gt_est)
+			self.frozen_data['time'] = deepcopy(self.time)
+
+		elif not self.pause.get() and type(self.frozen_data) == dict:
+
+			del self.frozen_data
+			self.frozen_data = None
+
 
 		for i, plot in enumerate(self.plots.values()):		
 
-			time = self.time[f'{self.legs_prefix[i]}_{self.foot_suffix}']		
 
-			if self.mode.get() == 0:
-
-				to_plot = self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
-				# time = self.forces[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
-
-			elif self.mode.get() == 1:
-
-				to_plot = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
-				# time = self.gt[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
-				title = f'Groundtruth forces - {self.legs_prefix[i]}'
-
-			elif self.mode.get() == 2:
-
-				to_plot = self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
-				# time = self.err[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
-				title = f'Estimation error - {self.legs_prefix[i]}'
-
-			elif self.mode.get() == 3:
-
-				to_plot = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]				
-				# time = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
-				title = f'RMSE - {self.legs_prefix[i]}'
-
-			elif self.mode.get() == 4:
-
-				to_plot = self.norm[f'{self.legs_prefix[i]}_{self.foot_suffix}']	
-				l = to_plot.shape[0]
-				to_plot = np.array([np.zeros(l), np.zeros(l), to_plot])		
-				# time = self.mse[f'{self.legs_prefix[i]}_{self.foot_suffix}'][1]
-				labels = norm_label
-				title = f'Norm error - {self.legs_prefix[i]}'
-
-			elif self.mode.get() == 5:
-
-				to_plot = self.gt_est_z[f'{self.legs_prefix[i]}_{self.foot_suffix}'][0]
-				title = f'Forces comparison - {self.legs_prefix[i]}'
-			
+			to_plot, title, labels, colors, time, style = self.process_mode(i)			
 
 			if not time.shape[0] == to_plot.shape[1]:
 
 				continue
 
-				
-			if self.show_torques.get():
-
-				plot.update_plot(to_plot, labels, title=title, xlabel= xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
-
-			else:						
-
-				if self.only_z.get():
-
-					if self.mode.get() == 5:
-						plot.update_plot(to_plot[-2:, :], comp_labels[-2:], title=title, color=comp_colors, style=comp_style, xlabel=xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
-					else:
-						l = to_plot[2, :].shape
-						only_z = np.array([np.zeros(l), np.zeros(l), to_plot[2, :]])
-						plot.update_plot(only_z, labels[:3], title=title, xlabel=xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time)
-
-				else:
-					
-					if self.mode.get() == 5:
-						plot.update_plot(to_plot, comp_labels, title=title, color=comp_colors, style=comp_style, xlabel = xlabels[self.mode.get()], ylabel = ylabels[self.mode.get()], time = time)		
-			
-					else:
-			
-						plot.update_plot(to_plot[:3, :], labels[:3],title=title, xlabel = xlabels[self.mode.get()], ylabel = ylabels[self.mode.get()], time = time)
-
-		self.need_to_update = False
-
-
-
-
-
-
-
-
-
-
-
-
-
+			plot.update_plot(to_plot, labels, title=title, xlabel= xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time, color=colors, style=style)
 
 
 

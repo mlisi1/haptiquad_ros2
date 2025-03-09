@@ -16,8 +16,6 @@ class PlotterBase(Node, tk.Tk):
 
 	def __init__(self, node_name):
 
-
-		self.need_to_update = False	
 		self.listening = False	
 		self.autoscale = False
 		self.autoscroll = True
@@ -104,6 +102,8 @@ class PlotterBase(Node, tk.Tk):
 
 		self.bind("<Configure>", self.on_resize) 
 		self.on_resize(None)
+
+		self.rate = self.create_rate(60)
 
 	
 	def init_from_params(self):
@@ -197,15 +197,10 @@ class PlotterBase(Node, tk.Tk):
 
 		while rclpy.ok():
 
-			if self.need_to_update:
-
-				if not self.pause.get():
-
-					self.update_plots()
-
-
+			self.update_plots()
 			self.update()
 			self.update_idletasks()
+			self.rate.sleep()
 
 
 	def on_destroy(self):

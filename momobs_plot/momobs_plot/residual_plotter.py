@@ -205,7 +205,6 @@ class ResidualPlotter(PlotterBase):
 				return			
 			self.plots['External'].update_plot(self.r_ext, label, xlabel="Time [s]", ylabel="Force [N]", time = self.time, title = "External Residual")
 
-		self.need_to_update = False
 
 	def callback(self, msg):
 
@@ -244,7 +243,6 @@ class ResidualPlotter(PlotterBase):
 		if self.time.shape[0] > self.limit:
 				self.time = self.time[1:]
 
-		self.need_to_update = True
 
 
 	def errors_callback(self, msg):
@@ -283,7 +281,6 @@ class ResidualPlotter(PlotterBase):
 		if self.err_time.shape[0] > self.limit:
 				self.err_time = self.err_time[1:]
 
-		self.need_to_update = True
 
 
 
