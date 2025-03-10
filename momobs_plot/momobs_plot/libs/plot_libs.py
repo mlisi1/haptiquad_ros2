@@ -86,7 +86,7 @@ class PlotContainer(ttk.Frame):
 				else:
 					s = style
 
-				line, = self.ax.plot(x_values, data[i,:], label=label_names[i], color=c, linestyle=s, linwidth=3)
+				line, = self.ax.plot(x_values, data[i,:], label=label_names[i], color=c, linestyle=s, linewidth=3)
 				self.lines.append(line)
 
 			self.ax.legend(loc="upper right")
