@@ -17,8 +17,8 @@ from copy import deepcopy
 
 force_labels = ["Fx", "Fy", "Fz", "Tx", "Ty", "Tz"]
 comp_labels = ["GT X", "EST X", "GT Y", "EST Y", "GT Z", "EST Z"]
-norm_label = ["Norm Error", "", "", "", "", ""]
-comp_colors = ['#1f77b4', '#1c5f8a', '#ff7f0e', '#e85c2a', '#2ca02c', '#78b82a']
+norm_label = ["", "", "Norm Error", "", "", ""]
+comp_colors = ['#1f77b4', '#14425f', '#ff7f0e', '#b0421e', '#2ca02c', '#4e781e']
 comp_style = ['-', '--', '-', '--', '-', '--']
 
 xlabels = ['Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]']

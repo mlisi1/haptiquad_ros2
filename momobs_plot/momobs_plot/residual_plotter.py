@@ -183,14 +183,14 @@ class ResidualPlotter(PlotterBase):
 				if not self.err_time.shape[0] == self.err_int[self.legs_prefix[i]].shape[1]:
 					continue
 				self.plots[self.legs_prefix[i]].update_plot(self.err_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]],
-												xlabel="Time [s]", ylabel="Torque [Nm]", time = self.err_time,
+												xlabel="Time [s]", ylabel="Momentum [Nm]", time = self.err_time,
 												title=f"Internal Residual Error - {self.legs_prefix[i]}")
 
 			else:
 				if not self.time.shape[0] == self.r_int[self.legs_prefix[i]].shape[1]:
 					continue
 				self.plots[self.legs_prefix[i]].update_plot(self.r_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]],
-												xlabel="Time [s]", ylabel="Torque [Nm]", time = self.time, 
+												xlabel="Time [s]", ylabel="Momentum [Nm]", time = self.time, 
 												title=f"Internal Residual - {self.legs_prefix[i]}")
 
 

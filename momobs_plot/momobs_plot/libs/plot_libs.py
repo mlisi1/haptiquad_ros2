@@ -86,7 +86,7 @@ class PlotContainer(ttk.Frame):
 				else:
 					s = style
 
-				line, = self.ax.plot(x_values, data[i,:], label=label_names[i], color=c, linestyle=s)
+				line, = self.ax.plot(x_values, data[i,:], label=label_names[i], color=c, linestyle=s, linwidth=3)
 				self.lines.append(line)
 
 			self.ax.legend(loc="upper right")
@@ -95,7 +95,7 @@ class PlotContainer(ttk.Frame):
 			# self.canvas.draw()
 
 			self.canvas.draw()  # Ensure the canvas is fully drawn
-			self.ax.set_title(self.title if title==None else title)    
+			self.ax.set_title(self.title if title==None else title, fontsize=16)    
 
 			self.first_time = False
 			
