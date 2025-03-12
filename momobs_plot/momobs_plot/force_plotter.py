@@ -46,7 +46,7 @@ class ForcePlotter(PlotterBase):
 		self.prev_axis = 0
 		self.foot_names = []
 		self.forces, self.gt, self.gt_est, self.err, self.rmse, self.time, self.norm = {}, {}, {}, {}, {}, {}, {}
-		self.frozen_data = None
+		
 		
 		for pref in self.legs_prefix:
 

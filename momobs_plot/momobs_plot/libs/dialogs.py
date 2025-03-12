@@ -3,18 +3,20 @@ from tkinter import ttk
 import os
 from PIL import Image
 from io import BytesIO
+import numpy as np
 
 
 
 class SaveDialog(tk.Toplevel):
 
-    def __init__(self, root):
+    def __init__(self, root, frozen_data):
         
         super().__init__(root)
         self.title("Save plots")
         # self.geometry("170x330")  
         self.resizable(tk.FALSE, tk.FALSE)
         self.root = root
+        self.data = frozen_data
 
         self.grab_set()
         self.transient(root)
@@ -69,6 +71,52 @@ class SaveDialog(tk.Toplevel):
             self.to_save[i].set(self.save_all.get())
             c.config(state=tk.NORMAL if not self.save_all.get() else tk.DISABLED)
 
+    def save_stats(self, filepath):
+
+        if self.data == None:
+            return
+
+        with open(os.path.join(filepath, 'plot_stats.txt'), "w") as f:
+            f.write("Plot stats:\n")
+            for key in self.data['norm'].keys():
+
+                f.write(f'-{key}:\n')
+
+                avg_norm = np.mean(self.data['norm'][key])
+                avg_rmse_x = np.mean(self.data['rmse'][key][0,:])
+                avg_rmse_y = np.mean(self.data['rmse'][key][1,:])
+                avg_rmse_z = np.mean(self.data['rmse'][key][2,:])
+                min_norm = np.min(self.data['norm'][key])
+                max_norm = np.max(self.data['norm'][key])
+                min_rmse_x = np.min(self.data['rmse'][key][0,:])
+                min_rmse_y = np.min(self.data['rmse'][key][1,:])
+                min_rmse_z = np.min(self.data['rmse'][key][2,:])
+                max_rmse_x = np.max(self.data['rmse'][key][0,:])
+                max_rmse_y = np.max(self.data['rmse'][key][1,:])
+                max_rmse_z = np.max(self.data['rmse'][key][2,:])
+                last_val_rmse = self.data['rmse'][key][:,-1]
+
+                f.write('   Norm:\n')
+                f.write(f'      - Avg value: {avg_norm} N / {avg_norm/9.8} Kg\n')
+                f.write(f'      - Min value: {min_norm} N / {min_norm/9.8} Kg\n')
+                f.write(f'      - Max value: {max_norm} N / {max_norm/9.8} Kg\n')
+                f.write('   RMSE:\n')
+                f.write('       -X:\n')
+                f.write(f'          - Avg value: {avg_rmse_x} N / {avg_rmse_x/9.8} Kg\n')
+                f.write(f'          - Min value: {min_rmse_x} N / {min_rmse_x/9.8} Kg\n')
+                f.write(f'          - Max value: {max_rmse_x} N / {max_rmse_x/9.8} Kg\n')
+                f.write('       -Y:\n')
+                f.write(f'          - Avg value: {avg_rmse_y} N / {avg_rmse_y/9.8} Kg\n')
+                f.write(f'          - Min value: {min_rmse_y} N / {min_rmse_y/9.8} Kg\n')
+                f.write(f'          - Max value: {max_rmse_y} N / {max_rmse_y/9.8} Kg\n')
+                f.write('       -Z:\n')
+                f.write(f'          - Avg value: {avg_rmse_z} N / {avg_rmse_z/9.8} Kg\n')
+                f.write(f'          - Min value: {min_rmse_z} N / {min_rmse_z/9.8} Kg\n')
+                f.write(f'          - Max value: {max_rmse_z} N / {max_rmse_z/9.8} Kg\n')
+                f.write(f'      - Last value: {last_val_rmse} N / {last_val_rmse/9.8} Kg\n')                    
+
+
+
     def save(self):
 
         if self.single_image.get():
@@ -84,6 +132,8 @@ class SaveDialog(tk.Toplevel):
             path = tk.filedialog.askdirectory(title="Choose a Directory")
 
         if self.save_all.get():
+
+            self.save_stats(path)
 
             if self.single_image.get():
                 

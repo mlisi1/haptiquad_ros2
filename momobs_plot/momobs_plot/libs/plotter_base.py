@@ -21,6 +21,7 @@ class PlotterBase(Node, tk.Tk):
 		self.autoscroll = True
 
 		self.start_time = None
+		self.frozen_data = None
 
 		Node.__init__(self, node_name)
 		tk.Tk.__init__(self)
@@ -214,7 +215,7 @@ class PlotterBase(Node, tk.Tk):
 
 	def save_plots(self):
 
-		SaveDialog(self)
+		SaveDialog(self, self.frozen_data)
 
 
 
