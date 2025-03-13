@@ -5,10 +5,11 @@ import rclpy
 from tkinter import ttk
 import tkinter as tk
 import numpy as np
+from copy import deepcopy
 
 from momobs_msgs.msg import ResidualsStamped, ObserverGains, ResidualErrorStamped
 
-label = ['Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz']
+force_labels = ['Fx', 'Fy', 'Fz', 'Tx', 'Ty', 'Tz']
 
 class ResidualPlotter(PlotterBase):
 
@@ -170,7 +171,64 @@ class ResidualPlotter(PlotterBase):
 			self.err_time = np.empty(0)
 
 
+
+	def proces_mode_int(self, i):
+
+		key = self.legs_prefix[i]
+		labels = self.joint_labels[key]
+		pause = self.pause.get()
+
+		if self.show_err.get():
+
+			to_plot = self.err_int[key] if not pause else self.frozen_data['err_int'][key]
+			time = self.err_time if not pause else self.frozen_data['err_time']
+			title = f"Internal Residual Error - {key}"
+
+		else:
+
+			to_plot = self.r_int[key] if not pause else self.frozen_data['int'][key]
+			time = self.time if not pause else self.frozen_data['time']
+			title = f"Internal Residual - {key}"
+
+		return to_plot, time, labels, title
+	
+
+	def proces_mode_ext(self):
+
+		pause = self.pause.get()
+		if self.show_err.get():
+
+			to_plot = self.err_ext if not pause else self.frozen_data['err_ext']
+			time = self.err_time if not pause else self.frozen_data['err_time']
+			title = "External Residual Error"
+
+		else:
+
+			to_plot = self.r_ext if not pause else self.frozen_data['ext']
+			time = self.time if not pause else self.frozen_data['time']
+			title = "External Residual"
+
+		return to_plot, time, title
+
+
 	def update_plots(self):
+
+		if self.pause.get() and type(self.frozen_data) == type(None):
+			
+			self.frozen_data = {}
+			self.frozen_data['int'] = deepcopy(self.r_int)
+			self.frozen_data['ext'] = deepcopy(self.r_ext)
+			self.frozen_data['err_int'] = deepcopy(self.err_int)
+			self.frozen_data['err_ext'] = deepcopy(self.err_ext)
+			self.frozen_data['time'] = deepcopy(self.time)
+			self.frozen_data['err_time'] = deepcopy(self.err_time)
+
+
+		elif not self.pause.get() and type(self.frozen_data) == dict:
+
+			del self.frozen_data
+			self.frozen_data = None
+
 
 		if not self.last_mode == self.show_err.get():
 			self.last_mode = self.show_err.get()
@@ -179,31 +237,23 @@ class ResidualPlotter(PlotterBase):
 
 		for i in range(4):
 
-			if self.show_err.get():
-				if not self.err_time.shape[0] == self.err_int[self.legs_prefix[i]].shape[1]:
-					continue
-				self.plots[self.legs_prefix[i]].update_plot(self.err_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]],
-												xlabel="Time [s]", ylabel="Momentum [Nm]", time = self.err_time,
-												title=f"Internal Residual Error - {self.legs_prefix[i]}")
+			to_plot, time, labels, title = self.proces_mode_int(i)
 
-			else:
-				if not self.time.shape[0] == self.r_int[self.legs_prefix[i]].shape[1]:
-					continue
-				self.plots[self.legs_prefix[i]].update_plot(self.r_int[self.legs_prefix[i]], self.joint_labels[self.legs_prefix[i]],
-												xlabel="Time [s]", ylabel="Momentum [Nm]", time = self.time, 
-												title=f"Internal Residual - {self.legs_prefix[i]}")
+			if not to_plot.shape[1] == time.shape[0]:
+				continue
 
+			self.plots[self.legs_prefix[i]].update_plot(to_plot, labels,
+												xlabel="Time [s]", ylabel="Momentum [Nm]", time = time,
+												title=title)
 
-		if self.show_err.get():
-			if not self.err_time.shape[0] == self.err_ext.shape[1]:
-				return
-			self.plots['External'].update_plot(self.err_ext, label, xlabel="Time [s]", ylabel="Force [N]", time = self.err_time, title = "External Residual Error")
+		to_plot, time, title = self.proces_mode_ext()
 
-		else:
+	
+		if not time.shape[0] == to_plot.shape[1]:
+			return
+		
+		self.plots['External'].update_plot(to_plot, force_labels, xlabel="Time [s]", ylabel="Force [N]", time = time, title = title)
 
-			if not self.time.shape[0] == self.r_ext.shape[1]:
-				return			
-			self.plots['External'].update_plot(self.r_ext, label, xlabel="Time [s]", ylabel="Force [N]", time = self.time, title = "External Residual")
 
 
 	def callback(self, msg):
