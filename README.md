@@ -1,6 +1,6 @@
 # haptiquad_ros2
 ## Description
-`momobs_ros2` is a ROS2 humble wrapper for the [`haptiquad`](https://github.com/mlisi1/haptiquad) library. The main purpose of this wrapper is to interface the library with different simulations (Gazebo, Mujoco and rosbags for the moment) and be able to calculate residuals and estimate ground reaction forces. This repo offers the following packages:
+`haptiquad_ros2` is a ROS2 humble wrapper for the [`haptiquad`](https://github.com/mlisi1/haptiquad) library. The main purpose of this wrapper is to interface the library with different simulations (Gazebo, Mujoco and rosbags for the moment) and be able to calculate residuals and estimate ground reaction forces. This repo offers the following packages:
 + `haptiquad` - the library implementing all the core code
 + `haptiquad_ros2` - contains the wrappers for the different simulations
 + `haptiquad_msgs` - messages for residuals, force, and errors
@@ -11,8 +11,7 @@ To install the package use the following commands:
 ```bash
 git clone git@github.com:mlisi1/haptiquad_ros2.git
 cd haptiquad_ros2/
-git submodule init
-git submodule update --recursive --remote
+git submodule update --init
 cd ..
 bash haptiquad_ros2/build.sh
 source install/setup.bash
