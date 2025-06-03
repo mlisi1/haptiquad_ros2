@@ -1,6 +1,6 @@
 [submodule "haptiquad"]
 	path = haptiquad
 	url = git@github.com:mlisi1/haptiquad.git
-[submodule "momobs_plot/theme"]
-	path = momobs_plot/theme
+[submodule "haptiquad_plot/theme"]
+	path = haptiquad_plot/theme
 	url = git@github.com:rdbende/Azure-ttk-theme.git

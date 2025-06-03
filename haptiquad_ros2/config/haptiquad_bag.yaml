@@ -1,0 +1,15 @@
+haptiquad_ros2:
+  ros__parameters:
+
+    observer:
+    
+      k_int: 50.0
+      k_ext: 50.0
+
+      rescale: true
+      expected_dt: 0.024
+      threshold: 0.03
+
+    estimator:
+
+      num_contacts: 4
