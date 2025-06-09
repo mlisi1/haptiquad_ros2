@@ -282,6 +282,24 @@ class ForcePlotter(PlotterBase):
 			
 			normalized_time = t-self.start_time
 			self.time[c.name] = np.append(self.time[c.name], normalized_time)
+			
+
+		wrench = np.zeros((6,1))
+		ngt["base_force"] = 0.0
+		ngt["base_torque"] = 0.0
+		self.gt["base_force"] = np.hstack((self.gt["base_force"], wrench))
+		self.gt["base_torque"] = np.hstack((self.gt["base_torque"], wrench))
+		self.gt_est["base_force"] = np.hstack((self.gt_est["base_force"], np.zeros((6,1))))
+		self.gt_est["base_torque"] = np.hstack((self.gt_est["base_torque"], np.zeros((6,1))))
+		t = gt.contacts[0].header.stamp.sec + 1e-9 * gt.contacts[0].header.stamp.nanosec
+		normalized_time = t-self.start_time
+		self.time["base_force"] = np.append(self.time["base_force"], normalized_time)
+		self.time["base_torque"] = np.append(self.time["base_torque"], normalized_time)
+
+		if self.gt["base_force"].shape[1] > self.limit:
+				self.gt["base_force"] = self.gt["base_force"][:,1:]
+		if self.gt["base_torque"].shape[1] > self.limit:
+				self.gt["base_torque"] = self.gt["base_torque"][:,1:]
 
 		for j in range(4):
 
@@ -302,6 +320,45 @@ class ForcePlotter(PlotterBase):
 			if self.forces[est.names[j].data].shape[1] > self.limit:
 				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
 				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
+
+
+		base_force = np.array([	
+					est.forces[4].force.x,
+					est.forces[4].force.y,
+					est.forces[4].force.z,
+					0.0,
+					0.0,
+					0.0,
+				]).reshape((6,1))
+		
+		base_torque = np.array([	
+					est.forces[4].torque.x,
+					est.forces[4].torque.y,
+					est.forces[4].torque.z,
+					0.0,
+					0.0,
+					0.0,
+				]).reshape((6,1))
+		
+		nest["base_force"] = np.linalg.norm(base_force[0:2])
+		nest["base_torque"] = np.linalg.norm(base_torque[0:2])
+
+		self.forces["base_force"] = np.hstack((self.forces["base_force"], base_force))
+		self.gt_est["base_force"][1][-1] = base_force[0][0]
+		self.gt_est["base_force"][3][-1] = base_force[1][0]
+		self.gt_est["base_force"][5][-1] = base_force[2][0]
+		if self.forces["base_force"].shape[1] > self.limit:
+			self.forces["base_force"] = self.forces["base_force"][:, 1:]
+			self.gt_est["base_force"] = self.gt_est["base_force"][:, 1:]
+
+
+		self.forces["base_torque"] = np.hstack((self.forces["base_torque"], base_torque))
+		self.gt_est["base_torque"][1][-1] = base_torque[0][0]
+		self.gt_est["base_torque"][3][-1] = base_torque[1][0]
+		self.gt_est["base_torque"][5][-1] = base_torque[2][0]
+		if self.forces["base_torque"].shape[1] > self.limit:
+			self.forces["base_torque"] = self.forces["base_torque"][:, 1:]
+			self.gt_est["base_torque"] = self.gt_est["base_torque"][:, 1:]
 
 		self.update_stats(ngt, nest)
 		
