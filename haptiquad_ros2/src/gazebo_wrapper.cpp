@@ -10,42 +10,56 @@ GazeboWrapper::GazeboWrapper() : HaptiQuadWrapperBase() {
     RF_contact_sub_.subscribe(this, "/contact_force_sensors/RF");
     LH_contact_sub_.subscribe(this, "/contact_force_sensors/LH");
     RH_contact_sub_.subscribe(this, "/contact_force_sensors/RH");
+    base_wrench_sub_.subscribe(this, "/wrench");
 
-    gazebo_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
-        SyncPolicy(10), 
+    gazebo_gt_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicyGT>>(
+        SyncPolicyGT(10), 
         joint_state_sub_, 
         odom_sub_, 
         LF_contact_sub_,
         RF_contact_sub_,
         LH_contact_sub_,
-        RH_contact_sub_
+        RH_contact_sub_,
+        base_wrench_sub_
     );
 
-    gazebo_sync_->registerCallback(std::bind(&GazeboWrapper::gazeboCallback, 
+    gazebo_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
+        SyncPolicy(10), 
+        joint_state_sub_, 
+        odom_sub_
+    );
+
+
+    if (calculate_residual_error) {
+
+        gazebo_gt_sync_->registerCallback(std::bind(&GazeboWrapper::gazeboGTCallback, 
                                     this, 
                                     std::placeholders::_1, 
                                     std::placeholders::_2, 
                                     std::placeholders::_3,
                                     std::placeholders::_4,
                                     std::placeholders::_5,
-                                    std::placeholders::_6)
-    );
+                                    std::placeholders::_6,
+                                    std::placeholders::_7)
+        );
+
+    } else {
+
+        gazebo_sync_->registerCallback(std::bind(&GazeboWrapper::gazeboCallback, 
+                                    this, 
+                                    std::placeholders::_1, 
+                                    std::placeholders::_2)
+        );
+
+    }
+
+    
 
 }
 
 
-
-
-
-
- void GazeboWrapper::gazeboCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
-                            const nav_msgs::msg::Odometry::ConstSharedPtr &odom,
-                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &LF_contact,
-                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &RF_contact,
-                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &LH_contact,
-                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &RH_contact) {
-
-    
+void GazeboWrapper::gazeboCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
+                            const nav_msgs::msg::Odometry::ConstSharedPtr &odom) {
 
     if (!description_received) {
         RCLCPP_ERROR_STREAM(this->get_logger(), "Robot description was not yet received");
@@ -87,23 +101,56 @@ GazeboWrapper::GazeboWrapper() : HaptiQuadWrapperBase() {
     observer.updateBaseState(v0, orientation);
 
 
-    current_stamp = rclcpp::Time(joint_state->header.stamp);
+    current_stamp = rclcpp::Time(joint_state->header.stamp, last_stamp.get_clock_type());
     dt = (current_stamp - last_stamp).seconds();
 
     std::tie(r_int, r_ext) = observer.getResiduals(dt);
 
     publishResiduals();
 
-    std::map<std::string, bool> is_on_ground;
+    estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
-    is_on_ground["LF_FOOT"] = LF_contact->states.size() == 0 ? false : true;
-    is_on_ground["RF_FOOT"] = RF_contact->states.size() == 0 ? false : true;
-    is_on_ground["LH_FOOT"] = LH_contact->states.size() == 0 ? false : true;
-    is_on_ground["RH_FOOT"] = RH_contact->states.size() == 0 ? false : true;
+    F = estimator.calculateForces(r_int, r_ext, orientation);
+
+    publishForces();
+
+    last_stamp = current_stamp;
+
+
+
+}
+
+
+
+ void GazeboWrapper::gazeboGTCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
+                            const nav_msgs::msg::Odometry::ConstSharedPtr &odom,
+                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &LF_contact,
+                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &RF_contact,
+                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &LH_contact,
+                            const gazebo_msgs::msg::ContactsState::ConstSharedPtr &RH_contact,
+                            const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench) {
+
+    
+
+    if (!description_received) {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Robot description was not yet received");
+        return;
+    }
+
+    if (gt_first_message) {
+        gt_first_message = false;
+        return;
+    }
+
+
+    gazeboCallback(joint_state, odom);
+
 
     for (int i=0; i<num_contacts; i++) {
         GT_F[feet_frames[i]] = Eigen::VectorXd::Zero(6);
     }
+
+    GT_F["base_wrench"] = Eigen::VectorXd::Zero(6);
 
     if (!LF_contact->states.size()==0) {
         GT_F["LF_FOOT"] <<  LF_contact->states.back().total_wrench.force.x,
@@ -142,20 +189,21 @@ GazeboWrapper::GazeboWrapper() : HaptiQuadWrapperBase() {
     }
 
 
-    
+    GT_F["base_wrench"] << base_wrench.wrench.force.x,
+                            base_wrench.wrench.force.y,
+                            base_wrench.wrench.force.z,
+                            base_wrench.wrench.torque.x,
+                            base_wrench.wrench.torque.y,
+                            base_wrench.wrench.torque.z;
 
-    estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
-    F = estimator.calculateForces(r_int, r_ext, orientation);
     std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
 
     err_int = gt_r_int - r_int;
     err_ext = gt_r_ext - r_ext;
 
-    publishForces();
     publishResidualErrors();
 
-    last_stamp = joint_state->header.stamp;
     
 }
 
