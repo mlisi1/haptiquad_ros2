@@ -189,12 +189,12 @@ void GazeboWrapper::gazeboCallback(const sensor_msgs::msg::JointState::ConstShar
     }
 
 
-    GT_F["base_wrench"] << base_wrench.wrench.force.x,
-                            base_wrench.wrench.force.y,
-                            base_wrench.wrench.force.z,
-                            base_wrench.wrench.torque.x,
-                            base_wrench.wrench.torque.y,
-                            base_wrench.wrench.torque.z;
+    GT_F["base_wrench"] << base_wrench->wrench.force.x,
+                            base_wrench->wrench.force.y,
+                            base_wrench->wrench.force.z,
+                            base_wrench->wrench.torque.x,
+                            base_wrench->wrench.torque.y,
+                            base_wrench->wrench.torque.z;
 
 
     std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
