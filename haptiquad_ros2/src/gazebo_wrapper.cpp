@@ -60,7 +60,7 @@ GazeboWrapper::GazeboWrapper() : HaptiQuadWrapperBase() {
     }
 
 
-    for (int i=0; i<joint_state->position.size(); i++) {
+    for (size_t i=0; i<joint_state->position.size(); i++) {
 
         msg_position_dict[joint_state->name[i]] =    joint_state->position[i];
         msg_velocity_dict[joint_state->name[i]] =    joint_state->velocity[i];
@@ -144,7 +144,6 @@ GazeboWrapper::GazeboWrapper() : HaptiQuadWrapperBase() {
 
     
 
-    estimator.setFeetOnGround(is_on_ground);
     estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
     F = estimator.calculateForces(r_int, r_ext, orientation);

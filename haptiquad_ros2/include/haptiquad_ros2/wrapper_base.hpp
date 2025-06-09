@@ -43,7 +43,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
     protected:
 
         bool description_received = false;
-        bool first_message = true;
+        bool first_message, gt_first_message = true;
 
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr description_sub;
         rclcpp::Subscription<haptiquad_msgs::msg::ObserverGains>::SharedPtr gains_sub;
@@ -80,6 +80,9 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
 
 
         //PARAMETERS
+        std::string base_link_name;
+        bool calculate_residual_error;
+
         //Time rescaling
         int num_contacts = 0;
         float k_int, k_ext = 1.0;

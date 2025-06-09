@@ -30,7 +30,7 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
     }
 
 
-    for (int i=0; i<msg->contacts.size(); i++) {
+    for (size_t i=0; i<msg->contacts.size(); i++) {
 
         Eigen::VectorXd tmp = Eigen::VectorXd::Zero(6);       
 
@@ -46,7 +46,7 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
     }
 
 
-    for (int i=0; i<msg->joints.position.size(); i++) {
+    for (size_t i=0; i<msg->joints.position.size(); i++) {
 
         msg_position_dict[msg->joints.name[i]] =    msg->joints.position[i];
         msg_velocity_dict[msg->joints.name[i]] =    msg->joints.velocity[i];
@@ -81,11 +81,10 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
 
     std::map<std::string, bool> is_on_ground;
 
-    for (int i=0; i<msg->contacts.size(); i++) {
+    for (size_t i=0; i<msg->contacts.size(); i++) {
         is_on_ground[msg->contacts[i].name] = msg->contacts[i].state;
     }
 
-    estimator.setFeetOnGround(is_on_ground);
     estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
     F = estimator.calculateForces(r_int, r_ext, orientation);

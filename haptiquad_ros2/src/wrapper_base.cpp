@@ -36,6 +36,8 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     rescale = this->declare_parameter<bool>("observer.rescale", false);
     expected_dt = this->declare_parameter<double>("observer.expected_dt", 0.0);
     threshold = this->declare_parameter<double>("observer.threshold", 0.0); 
+    base_link_name = this->declare_parameter<std::string>("estimator.base_link_name", "base");
+    calculate_residual_error = this->declare_parameter<bool>("estimator.calculate_residual_error", false);
 
 
     friction    = this->declare_parameter<bool>("observer.friction.friction", false);
@@ -43,6 +45,8 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     F_c         = this->declare_parameter<double>("observer.friction.F_c", 0.0);    
 
     observer.setFrictionParameters(friction, F_s, F_c); 
+    estimator.setBaseFrame(base_link_name);
+
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Initialized base wrapper");
 
@@ -64,7 +68,7 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Received pinocchio model with " << model.nv << "DOFs");
     RCLCPP_DEBUG_STREAM(this->get_logger(), "======================================================");
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Model inertias:");
-    for (int i=0; i<model.inertias.size(); i++) {
+    for (size_t i=0; i<model.inertias.size(); i++) {
         RCLCPP_DEBUG_STREAM(this->get_logger(), "\n" << model.inertias[i] << "\n");
         RCLCPP_DEBUG_STREAM(this->get_logger(), "----------------------------------");
     }
@@ -91,15 +95,15 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
     residual_error_msg.names.resize(model.nv-6);
 
 
-    forces_msg.forces.resize(num_contacts);
-    forces_msg.names.resize(num_contacts);
+    forces_msg.forces.resize(num_contacts + 1);
+    forces_msg.names.resize(num_contacts + 1);
 
     
 
     joint_names.resize(model.nv-6);
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint names:");
     
-    for (int i=0; i<joint_names.size(); i++) {
+    for (size_t i=0; i<joint_names.size(); i++) {
         joint_names[i] = model.names[i+2];
         RCLCPP_DEBUG_STREAM(this->get_logger(), joint_names[i]);
     }
@@ -116,6 +120,7 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
         forces_msg.names[i].data = feet_frames[i];
         RCLCPP_DEBUG_STREAM(this->get_logger(), feet_frames[i]);
     }
+    forces_msg.names[num_contacts].data = "base_wrench";
     RCLCPP_DEBUG_STREAM(this->get_logger(), "========================================================");
 
     description_received = true;
@@ -185,7 +190,8 @@ void HaptiQuadWrapperBase::publishResidualErrors() {
 void HaptiQuadWrapperBase::publishForces() {
 
     forces_msg.header.stamp = current_stamp;
-    //TODO: Change the message so that it can hold the name of the frame
+    forces_msg.header.frame_id = "world";
+
     for (int i=0; i<num_contacts; i++) {
 
         forces_msg.forces[i].force.x =  F[feet_frames[i]][0];
@@ -196,6 +202,13 @@ void HaptiQuadWrapperBase::publishForces() {
         forces_msg.forces[i].torque.z = F[feet_frames[i]][5];
 
     }
+
+    forces_msg.forces[num_contacts].force.x = F["base_wrench"][0];
+    forces_msg.forces[num_contacts].force.y = F["base_wrench"][1];
+    forces_msg.forces[num_contacts].force.z = F["base_wrench"][2];
+    forces_msg.forces[num_contacts].torque.x = F["base_wrench"][3];
+    forces_msg.forces[num_contacts].torque.y = F["base_wrench"][4];
+    forces_msg.forces[num_contacts].torque.z = F["base_wrench"][5];
 
 
     forces_publisher->publish(forces_msg);
