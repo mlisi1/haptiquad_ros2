@@ -11,3 +11,4 @@ haptiquad_ros2:
     estimator:
 
       num_contacts: 4
+      base_link_name : "base"

@@ -10,19 +10,31 @@ MujocoWrapper::MujocoWrapper() : HaptiQuadWrapperBase() {
     joint_state_sub_.subscribe(this, "/simulation/joint_states", mujoco_qos);
     odom_sub_.subscribe(this, "/simulation/sensor_odom", mujoco_qos);
     mujoco_contacts_sub_.subscribe(this, "/simulation/contacts", mujoco_qos);
+    mujoco_wrench_sub_.subscribe(this, "/simulation/base_wrench", mujoco_qos);
 
     mujoco_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(
         SyncPolicy(10), 
         joint_state_sub_, 
-        odom_sub_, 
+        odom_sub_
+    );
+
+    mujoco_gt_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicyGT>>(
+        SyncPolicyGT(10), 
+        mujoco_wrench_sub_,
         mujoco_contacts_sub_
     );
 
     mujoco_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoCallback, 
                                     this, 
                                     std::placeholders::_1, 
-                                    std::placeholders::_2, 
-                                    std::placeholders::_3)
+                                    std::placeholders::_2)
+    );
+
+
+    mujoco_gt_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoGTCallback, 
+                                    this, 
+                                    std::placeholders::_1, 
+                                    std::placeholders::_2)
     );
 
 }
@@ -30,8 +42,7 @@ MujocoWrapper::MujocoWrapper() : HaptiQuadWrapperBase() {
 
 
 void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
-                                    const nav_msgs::msg::Odometry::ConstSharedPtr &odom,
-                                    const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts) {
+                                    const nav_msgs::msg::Odometry::ConstSharedPtr &odom) {
 
     if (!description_received) {
         RCLCPP_ERROR_STREAM(this->get_logger(), "Robot description was not yet received");
@@ -47,7 +58,7 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
     }
 
 
-    for (int i=0; i<joint_state->position.size(); i++) {
+    for (size_t i=0; i<joint_state->position.size(); i++) {
 
         msg_position_dict[joint_state->name[i]] =    joint_state->position[i];
         msg_velocity_dict[joint_state->name[i]] =    joint_state->velocity[i];
@@ -80,19 +91,41 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     publishResiduals();
 
-    std::map<std::string, bool> is_on_ground;
+    estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
+
+    F = estimator.calculateForces(r_int, r_ext, orientation);
+
+    publishForces();
+
+    last_stamp = joint_state->header.stamp;
+
+
+}
+
+
+
+
+
+void MujocoWrapper::mujocoGTCallback(const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench,
+                            const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts) {
+
+     if (!description_received) {
+        RCLCPP_ERROR_STREAM(this->get_logger(), "Robot description was not yet received");
+        return;
+    }
+
+
+    current_stamp = rclcpp::Time(base_wrench->header.stamp);
 
     for (int i=0; i<num_contacts; i++) {
-        is_on_ground[feet_frames[i]] = false;
         GT_F[feet_frames[i]] = Eigen::VectorXd::Zero(6);
     }
 
 
-    for (int i=0; i<contacts->contacts.size(); i++) {
+    for (size_t i=0; i<contacts->contacts.size(); i++) {
         std::string contact_name = contacts->contacts[i].object2_name;
         for (int j=0; j<num_contacts; j++) {
             if (contact_name == feet_frames[j]) {
-                is_on_ground[contact_name] = true;
                 GT_F[contact_name] <<   contacts->contacts[i].contact_force.force.x,
                                         contacts->contacts[i].contact_force.force.y,
                                         contacts->contacts[i].contact_force.force.z,
@@ -105,20 +138,19 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
     }
 
 
+    if (current_stamp != gt_stamp) {
 
-    estimator.setFeetOnGround(is_on_ground);
-    estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
+        RCLCPP_WARN_STREAM(this->get_logger(), "Time mismatch between estimation and real values");
 
-    F = estimator.calculateForces(r_int, r_ext, orientation);
+    }
+
 
     std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);
     err_int = gt_r_int - r_int;
     err_ext = gt_r_ext - r_ext;
 
-    publishForces();
     publishResidualErrors();
 
-    last_stamp = joint_state->header.stamp;
 
 
 }

@@ -62,7 +62,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         std::map<std::string, double> msg_velocity_dict;
         std::map<std::string, double> msg_torques_dict;
 
-        rclcpp::Time last_stamp, current_stamp;
+        rclcpp::Time last_stamp, current_stamp, gt_stamp;
         double dt;
 
         Eigen::VectorXd r_int, r_ext;
@@ -80,6 +80,8 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
 
 
         //PARAMETERS
+        std::string base_link_name;
+
         //Time rescaling
         int num_contacts = 0;
         float k_int, k_ext = 1.0;
