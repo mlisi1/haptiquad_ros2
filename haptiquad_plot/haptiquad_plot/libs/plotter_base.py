@@ -69,28 +69,28 @@ class PlotterBase(Node, tk.Tk):
 		self.limit = self.get_parameter('memory_limit').get_parameter_value().integer_value
 
 		self.listen = ttk.Checkbutton(self, style='Toggle.TButton', text="Listen Topic", command=self.start_listening)
-		self.listen.grid(row=0, column=0, padx = (50, 5), pady=10, sticky="w")
+		self.listen.grid(row=0, column=1, padx = (50, 5), pady=10, sticky="w")
 
-		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=1, sticky="ns", pady = 5, padx = 5)
+		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=2, sticky="ns", pady = 5, padx = 5)
 
 		self.autoscale_butt = ttk.Checkbutton(self, style='Toggle.TButton', text="Autoscale", command=self.set_autoscale)
-		self.autoscale_butt.grid(row=0, column=2, padx = 5, pady = 10, sticky="w")
+		self.autoscale_butt.grid(row=0, column=3, padx = 5, pady = 10, sticky="w")
 
 		self.scale_range = tk.StringVar()
 		self.scale_range.set("5")
 
 		self.scale_range_spin = ttk.Spinbox(self, from_=0.01, to=100.0, increment=0.01, textvariable=self.scale_range, width=5)
-		self.scale_range_spin.grid(row = 0, column=3, padx = (20,5), pady = 10, sticky="we")
+		self.scale_range_spin.grid(row = 0, column=4, padx = (20,5), pady = 10, sticky="we")
 
 		self.set_range_butt = ttk.Button(self, text="Set", command=self.set_range, width=2)
-		self.set_range_butt.grid(row = 0, column=4, padx=(5, 10), sticky="we", pady=10)
+		self.set_range_butt.grid(row = 0, column=5, padx=(5, 10), sticky="we", pady=10)
 
-		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=5, sticky="ns", pady = 5, padx = 5)
+		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=6, sticky="ns", pady = 5, padx = 5)
 
 		self.pause = tk.BooleanVar()
 		self.pause.set(False)
 		self.pause_button = ttk.Checkbutton(self, style='Toggle.TButton', image=self.pause_icon, variable=self.pause)
-		self.pause_button.grid(column=16, row=0, pady=10)
+		self.pause_button.grid(column=0, row=0, pady=10)
 
 		self.plots = []
 
@@ -174,8 +174,8 @@ class PlotterBase(Node, tk.Tk):
 
 		if self.previous_size != curr_size:
 
-			height = self.winfo_height() / 2 - 50
-			width = self.winfo_width() / 2 -50
+			height = self.winfo_height() / 3
+			width = self.winfo_width() / 2 
 
 			for plot in self.plots.values():
 

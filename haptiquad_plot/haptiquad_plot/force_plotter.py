@@ -7,6 +7,7 @@ import tkinter as tk
 import numpy as np
 
 from haptiquad_msgs.msg import EstimatedForces
+from geometry_msgs.msg import WrenchStamped
 
 from message_filters import Subscriber, TimeSynchronizer, ApproximateTimeSynchronizer
 
@@ -22,7 +23,7 @@ comp_colors = ['#1f77b4', '#14425f', '#ff7f0e', '#b0421e', '#2ca02c', '#4e781e']
 comp_style = ['-', '--', '-', '--', '-', '--']
 
 xlabels = ['Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]', 'Time [s]']
-ylabels = ['Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Force [N]']
+ylabels = ['Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Force [N]', 'Torque [Nm]']
 
 class ForcePlotter(PlotterBase):
 
@@ -59,6 +60,17 @@ class ForcePlotter(PlotterBase):
 			self.time[key] = np.empty(0)
 			self.norm[key] = np.empty(0)
 			self.foot_names.append(key)
+
+		for key in ["base_force", "base_torque"]:
+			self.forces[key] = np.empty((6,0))
+			self.gt[key] = np.empty((6,0))
+			self.gt_est[key] = np.empty((6,0))
+			self.err[key] = np.empty((6,0))
+			self.rmse[key] = np.empty((6,0))
+			self.time[key] = np.empty(0)
+			self.norm[key] = np.empty(0)
+			self.foot_names.append(key)
+
 
 
 		try:
@@ -102,7 +114,8 @@ class ForcePlotter(PlotterBase):
 			)
 
 			self.mujoco_contacts = Subscriber(self, MujocoContacts, "/simulation/contacts", qos_profile=mujoco_qos)
-			self.mujoco_subs = [self.mujoco_contacts, self.est]
+			self.mujoco_wrench = Subscriber(self, WrenchStamped, "/simulation/base_wrench", qos_profile=mujoco_qos)
+			self.mujoco_subs = [self.mujoco_contacts, self.mujoco_wrench, self.est]
 
 			self.mujoco_sync = ApproximateTimeSynchronizer(self.mujoco_subs, queue_size=10, slop=0.05)
 			self.mujoco_sync.registerCallback(self.mujoco_callback)
@@ -113,6 +126,7 @@ class ForcePlotter(PlotterBase):
 			self.RF_contact = Subscriber(self, ContactsState, "/contact_force_sensors/RF")
 			self.LH_contact = Subscriber(self, ContactsState, "/contact_force_sensors/LH")
 			self.RH_contact = Subscriber(self, ContactsState, "/contact_force_sensors/RH")
+			self.gazebo_wrench = Subscriber(self, WrenchStamped, "/wrench")
 
 			self.gazebo_subs = [self.LF_contact,
 					   			self.RF_contact,
@@ -126,6 +140,23 @@ class ForcePlotter(PlotterBase):
 		self.init_from_params()
 
 
+	def on_resize(self, event):
+
+		#Update to get the current values
+		self.update()
+		curr_size = (self.winfo_width(), self.winfo_height())
+
+		if self.previous_size != curr_size:
+
+			height = self.winfo_height() / 2 - 50
+			width = self.winfo_width() / 3 - 20
+
+			for plot in self.plots.values():
+
+				plot.canvas.get_tk_widget().config(width=width, height=height)
+				plot.fast_update()
+
+		self.previous_size = curr_size
 
 	def add_GUI(self):
 		
@@ -133,49 +164,53 @@ class ForcePlotter(PlotterBase):
 		self.show_torques = tk.BooleanVar()
 
 		self.show_torques_butt = ttk.Checkbutton(self, style='Toggle.TButton', text="Show Torques", variable=self.show_torques, width=7)
-		self.show_torques_butt.grid(row = 0, column=6, padx = (5,5), pady = 10, sticky="we")
+		self.show_torques_butt.grid(row = 0, column=7, padx = (5,5), pady = 10, sticky="we")
 
-		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=7, sticky="ns", pady = 5, padx = 1)
+		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=8, sticky="ns", pady = 5, padx = 1)
 
 		self.mode = tk.IntVar()
 		self.mode.set(2)
 
-		ttk.Label(self, text="Mode:").grid(row = 0, column=8, sticky="ns", pady = 5, padx = (0, 0))
+		ttk.Label(self, text="Mode:").grid(row = 0, column=9, sticky="ns", pady = 5, padx = (0, 0))
 
 		self.show_est_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="Estimate", variable=self.mode, width=4, value=0)
-		self.show_est_butt.grid(row = 0, column=9, padx = (5,5), pady = 10, sticky="we")
+		self.show_est_butt.grid(row = 0, column=10, padx = (5,5), pady = 10, sticky="we")
 
 		self.show_gt_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="GT", variable=self.mode, width=4, value=1)
-		self.show_gt_butt.grid(row = 0, column=10, padx = (5,5), pady = 10, sticky="we")
+		self.show_gt_butt.grid(row = 0, column=11, padx = (5,5), pady = 10, sticky="we")
 
 		self.show_err_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="Error", variable=self.mode, width=4, value=2)
-		self.show_err_butt.grid(row = 0, column=11, padx = (5,5), pady = 10, sticky="we")
+		self.show_err_butt.grid(row = 0, column=12, padx = (5,5), pady = 10, sticky="we")
 
 		self.show_mse_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="RMSE", variable=self.mode, width=4, value=3)
-		self.show_mse_butt.grid(row = 0, column=12, padx = (5,5), pady = 10, sticky="we")
+		self.show_mse_butt.grid(row = 0, column=13, padx = (5,5), pady = 10, sticky="we")
 
 		self.show_norm_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="Norm Err", variable=self.mode, width=4, value=4)
-		self.show_norm_butt.grid(row = 0, column=13, padx = (5,5), pady = 10, sticky="we")
+		self.show_norm_butt.grid(row = 0, column=14, padx = (5,5), pady = 10, sticky="we")
 
 		self.show_both_butt = ttk.Radiobutton(self, style='Toggle.TButton', text="GT+EST", variable=self.mode, width=4, value=5)
-		self.show_both_butt.grid(row = 0, column=14, padx = (5,5), pady = 10, sticky="we")
+		self.show_both_butt.grid(row = 0, column=15, padx = (5,5), pady = 10, sticky="we")
 
 		self.only_z = tk.BooleanVar()
 		self.only_z.set(False)
 		self.only_z_butt = ttk.Checkbutton(self, text="Only Z", variable=self.only_z)
-		self.only_z_butt.grid(row = 0, column=15, padx = (5,5), pady = 10, sticky="we")
+		self.only_z_butt.grid(row = 0, column=16, padx = (5,5), pady = 10, sticky="we")
 
 		self.plots = {
 			self.legs_prefix[0]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[0]}"),
 			self.legs_prefix[1]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[1]}"),
 			self.legs_prefix[2]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[2]}"),
 			self.legs_prefix[3]:PlotContainer(self, f"Estimated Forces - {self.legs_prefix[3]}"),
+			"base_force":PlotContainer(self, f"Estimated Forces - Base Force"),
+			"base_torque":PlotContainer(self, f"Estimated Forces - Base Torque"),
 		}
 
-		self.plots[self.legs_prefix[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[self.legs_prefix[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[self.legs_prefix[2]].grid(row=1, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
-		self.plots[self.legs_prefix[3]].grid(row=2, column=9, padx=0, pady=0, 	columnspan=9,	sticky="w")
+		self.plots[self.legs_prefix[0]].grid(row=1, column=0, padx=0, pady=0, 	columnspan=6,	sticky="w")
+		self.plots[self.legs_prefix[1]].grid(row=2, column=0, padx=0, pady=0, 	columnspan=6,	sticky="w")
+		self.plots[self.legs_prefix[2]].grid(row=1, column=6, padx=0, pady=0, 	columnspan=7,	sticky="w")
+		self.plots[self.legs_prefix[3]].grid(row=2, column=6, padx=0, pady=0, 	columnspan=7,	sticky="w")
+		self.plots["base_force"].grid(		 row=1, column=13, padx=0, pady=0, 	columnspan=8,	sticky="e")
+		self.plots["base_torque"].grid(		 row=2, column=13, padx=0, pady=0, 	columnspan=8,	sticky="e")
 
 
 	def start_listening(self):
@@ -187,11 +222,21 @@ class ForcePlotter(PlotterBase):
 
 			for plot in self.plots.values():
 
+				plot.adjust_plots(0.15, 0.144, 0.938, 0.88, 0.2, 0.165)
 				plot.clear()
 
 			for pref in self.legs_prefix:
 
 				key = pref + '_' + self.foot_suffix
+				self.forces[key] = np.empty((6,0))
+				self.gt[key] = np.empty((6,0))
+				self.gt_est[key] = np.empty((6,0))
+				self.err[key] = np.empty((6,0))
+				self.rmse[key] = np.empty((6,0))
+				self.time[key] = np.empty(0)
+				self.norm[key] = np.empty(0)
+
+			for key in ["base_force", "base_torque"]:
 				self.forces[key] = np.empty((6,0))
 				self.gt[key] = np.empty((6,0))
 				self.gt_est[key] = np.empty((6,0))
@@ -266,7 +311,7 @@ class ForcePlotter(PlotterBase):
 		if not self.listening:
 			return
 		
-		[mujoco, est] = msgs
+		[mujoco, wrench, est] = msgs
 
 		ngt = {}
 		nest = {}
@@ -292,7 +337,10 @@ class ForcePlotter(PlotterBase):
 			if not key in gt_contacts.keys():
 				gt_contacts[key] = np.zeros((6,1))
 
-		for key in self.foot_names:				
+		for key in self.foot_names:		
+
+			if key in ["base_force", "base_torque"]:
+				continue		
 						
 			f = gt_contacts[key]
 
@@ -315,6 +363,59 @@ class ForcePlotter(PlotterBase):
 
 				self.gt[key] = self.gt[key][:,1:]
 
+		base_f = np.array([
+					wrench.wrench.force.x,	
+					wrench.wrench.force.y,	
+					wrench.wrench.force.z,	
+					0.0,	
+					0.0,	
+					0.0	
+				]).reshape((6,1)) 
+		
+		self.gt["base_force"] = np.hstack((self.gt["base_force"], base_f))
+		
+		ngt["base_force"] = np.linalg.norm(f[0:2])
+
+
+		base_t = np.array([
+					wrench.wrench.torque.x,	
+					wrench.wrench.torque.y,	
+					wrench.wrench.torque.z,	
+					0.0,	
+					0.0,	
+					0.0	
+				]).reshape((6,1)) 
+		
+		self.gt["base_torque"] = np.hstack((self.gt["base_torque"], base_t))
+		
+		ngt["base_torque"] = np.linalg.norm(f[0:2])
+
+		if self.gt["base_force"].shape[1] > self.limit:
+
+				self.gt["base_force"] = self.gt["base_force"][:,1:]
+		
+		if self.gt["base_torque"].shape[1] > self.limit:
+
+				self.gt["base_torque"] = self.gt["base_torque"][:,1:]
+
+
+		t = wrench.header.stamp.sec + 1e-9 * wrench.header.stamp.nanosec		
+		normalized_time = t-self.start_time
+		self.time["base_force"] = np.append(self.time["base_force"], normalized_time)
+		self.time["base_torque"] = np.append(self.time["base_torque"], normalized_time)
+
+		self.gt_est["base_force"] = np.hstack((self.gt_est["base_force"], np.zeros((6,1))))
+		self.gt_est["base_force"][0][-1] = base_f[0][0]
+		self.gt_est["base_force"][2][-1] = base_f[1][0]
+		self.gt_est["base_force"][4][-1] = base_f[2][0]
+
+		self.gt_est["base_torque"] = np.hstack((self.gt_est["base_torque"], np.zeros((6,1))))
+		self.gt_est["base_torque"][0][-1] = base_t[0][0]
+		self.gt_est["base_torque"][2][-1] = base_t[1][0]
+		self.gt_est["base_torque"][4][-1] = base_t[2][0]
+
+
+
 		for j in range(4):
 
 			force = np.array([	
@@ -334,6 +435,44 @@ class ForcePlotter(PlotterBase):
 			if self.forces[est.names[j].data].shape[1] > self.limit:
 				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
 				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
+
+		base_force = np.array([	
+					est.forces[4].force.x,
+					est.forces[4].force.y,
+					est.forces[4].force.z,
+					0.0,
+					0.0,
+					0.0,
+				]).reshape((6,1))
+		
+		base_torque = np.array([	
+					est.forces[4].torque.x,
+					est.forces[4].torque.y,
+					est.forces[4].torque.z,
+					0.0,
+					0.0,
+					0.0,
+				]).reshape((6,1))
+		
+		nest["base_force"] = np.linalg.norm(base_force[0:2])
+		nest["base_torque"] = np.linalg.norm(base_torque[0:2])
+
+		self.forces["base_force"] = np.hstack((self.forces["base_force"], base_force))
+		self.gt_est["base_force"][1][-1] = base_force[0][0]
+		self.gt_est["base_force"][3][-1] = base_force[1][0]
+		self.gt_est["base_force"][5][-1] = base_force[2][0]
+		if self.forces["base_force"].shape[1] > self.limit:
+			self.forces["base_force"] = self.forces["base_force"][:, 1:]
+			self.gt_est["base_force"] = self.gt_est["base_force"][:, 1:]
+
+
+		self.forces["base_torque"] = np.hstack((self.forces["base_torque"], base_torque))
+		self.gt_est["base_torque"][1][-1] = base_torque[0][0]
+		self.gt_est["base_torque"][3][-1] = base_torque[1][0]
+		self.gt_est["base_torque"][5][-1] = base_torque[2][0]
+		if self.forces["base_torque"].shape[1] > self.limit:
+			self.forces["base_torque"] = self.forces["base_torque"][:, 1:]
+			self.gt_est["base_torque"] = self.gt_est["base_torque"][:, 1:]
 
 		self.update_stats(ngt, nest)
 		
@@ -423,7 +562,7 @@ class ForcePlotter(PlotterBase):
 
 	def update_stats(self, ngt, nest):
 
-		for i in range(4):
+		for i in range(6):
 
 			key = self.foot_names[i]
 
@@ -452,26 +591,34 @@ class ForcePlotter(PlotterBase):
 		style = None
 		pause = self.pause.get()
 		time = self.time[key] if not pause else self.frozen_data['time'][key]
+		xlabel = xlabels[i]
+		ylabel = ylabels[i]
+		if i<4:
+			prefix = self.legs_prefix[i]
+		elif i == 4:
+			prefix = "Base Force"
+		elif i == 5:
+			prefix = "Base Torque"
 
 		if mode == 0:
 			
 			to_plot = self.forces[key] if not pause else self.frozen_data['forces'][key]
-			title = f'Estimated forces - {self.legs_prefix[i]}'
+			title = f'Estimated forces - {prefix}'
 
 		elif mode == 1:
 
 			to_plot = self.gt[key] if not pause else self.frozen_data['gt'][key]
-			title = f'Groundtruth forces - {self.legs_prefix[i]}'
+			title = f'Groundtruth forces - {prefix}'
 
 		elif mode == 2:
 
 			to_plot = self.err[key] if not pause else self.frozen_data['error'][key]
-			title = f'Estimation error - {self.legs_prefix[i]}'
+			title = f'Estimation error - {prefix}'
 
 		elif mode == 3:
 
 			to_plot = self.rmse[key] if not pause else self.frozen_data['rmse'][key]			
-			title = f'RMSE - {self.legs_prefix[i]}'
+			title = f'RMSE - {prefix}'
 
 		elif mode == 4:
 
@@ -479,12 +626,12 @@ class ForcePlotter(PlotterBase):
 			l = to_plot.shape[0]
 			to_plot = np.array([np.zeros(l), np.zeros(l), to_plot])		
 			labels = norm_label
-			title = f'Norm error - {self.legs_prefix[i]}'
+			title = f'Norm error - {prefix}'
 
 		elif mode == 5:
 
 			to_plot = self.gt_est[key] if not pause else self.frozen_data['comp'][key]
-			title = f'Forces comparison - {self.legs_prefix[i]}'
+			title = f'Forces comparison - {prefix}'
 			colors = comp_colors
 			labels = comp_labels
 			style = comp_style
@@ -506,7 +653,7 @@ class ForcePlotter(PlotterBase):
 			labels = labels[:3]
 
 
-		return to_plot, title, labels, colors, time, style
+		return to_plot, title, labels, colors, time, style, xlabel, ylabel
 			
 
 	
@@ -543,13 +690,13 @@ class ForcePlotter(PlotterBase):
 		for i, plot in enumerate(self.plots.values()):		
 
 
-			to_plot, title, labels, colors, time, style = self.process_mode(i)			
+			to_plot, title, labels, colors, time, style, xlabel, ylabel = self.process_mode(i)			
 
 			if not time.shape[0] == to_plot.shape[1]:
 
 				continue
 
-			plot.update_plot(to_plot, labels, title=title, xlabel= xlabels[self.mode.get()], ylabel=ylabels[self.mode.get()], time = time, color=colors, style=style)
+			plot.update_plot(to_plot, labels, title=title, xlabel= xlabel, ylabel=ylabel, time = time, color=colors, style=style)
 
 
 

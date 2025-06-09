@@ -61,18 +61,18 @@ class ResidualPlotter(PlotterBase):
 	def add_GUI(self):
 
 		self.autoscroll_butt = ttk.Checkbutton(self, style='Toggle.TButton', text="Autoscroll", command=self.set_autoscroll)
-		self.autoscroll_butt.grid(row=0, column=6, padx = 5, pady = 10, sticky="w")
+		self.autoscroll_butt.grid(row=0, column=7, padx = 5, pady = 10, sticky="w")
 
 		# self.scroll_range.set("2000")
 
 		self.scroll_range_spin = ttk.Spinbox(self, from_=10.0, to=10000.0, increment=5.0, textvariable=self.scroll_range, width=5)
-		self.scroll_range_spin.grid(row = 0, column=7, padx = (20,5), pady = 10, sticky="we")
+		self.scroll_range_spin.grid(row = 0, column=8, padx = (20,5), pady = 10, sticky="we")
 
 		self.set_scroll_range_butt = ttk.Button(self, text="Set", command=self.set_scroll_range, width=2)
-		self.set_scroll_range_butt.grid(row = 0, column=8, padx=(5, 10), sticky="we", pady=10)
+		self.set_scroll_range_butt.grid(row = 0, column=9, padx=(5, 10), sticky="we", pady=10)
 		self.set_scroll_range_butt.config(state=tk.DISABLED)	
 
-		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=9, sticky="ns", pady = 5, padx = 5)
+		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=10, sticky="ns", pady = 5, padx = 5)
 
 		self.k_int = tk.StringVar()
 		self.k_int.set("0.3")
@@ -80,26 +80,26 @@ class ResidualPlotter(PlotterBase):
 		self.k_ext = tk.StringVar()
 		self.k_ext.set("0.3")
 
-		ttk.Label(self, text="K int:").grid(row = 0, column=10, sticky="ns", pady = 5, padx = 5)
+		ttk.Label(self, text="K int:").grid(row = 0, column=11, sticky="ns", pady = 5, padx = 5)
 
 		self.k_int_spin = ttk.Spinbox(self, from_=0.0, to=100.0, increment=0.01, textvariable=self.k_int, width=4)
-		self.k_int_spin.grid(row = 0, column=11, padx=(5, 10), sticky="we", pady=10)
+		self.k_int_spin.grid(row = 0, column=12, padx=(5, 10), sticky="we", pady=10)
 
 
-		ttk.Label(self, text="K ext:").grid(row = 0, column=12, sticky="ns", pady = 5, padx = 5)
+		ttk.Label(self, text="K ext:").grid(row = 0, column=13, sticky="ns", pady = 5, padx = 5)
 
 		self.k_ext_spin = ttk.Spinbox(self, from_=0.0, to=100.0, increment=0.01, textvariable=self.k_ext, width=4)
-		self.k_ext_spin.grid(row = 0, column=13, padx=(5, 10), sticky="we", pady=10)
+		self.k_ext_spin.grid(row = 0, column=14, padx=(5, 10), sticky="we", pady=10)
 
 		self.send_gains_butt = ttk.Button(self, text="Set Gains", command=self.set_gains, width=2)
-		self.send_gains_butt.grid(row = 0, column=14, padx=(5, 10), sticky="we", pady=10)
+		self.send_gains_butt.grid(row = 0, column=15, padx=(5, 10), sticky="we", pady=10)
 
 		
 		self.show_err = tk.BooleanVar()
 		self.show_err.set(False)
 		self.last_mode = self.show_err.get()
 		self.show_err_butt = ttk.Checkbutton(self, style='Toggle.TButton', text="Errors", variable=self.show_err)
-		self.show_err_butt.grid(row=0, column=15, padx = (50, 20), pady=10, sticky="w")
+		self.show_err_butt.grid(row=0, column=16, padx = (50, 20), pady=10, sticky="w")
 
 
 		self.plots = [PlotContainer(self, f"Internal Residual - {self.legs_prefix[i]}") for i in range(4)]
@@ -129,8 +129,8 @@ class ResidualPlotter(PlotterBase):
 
 			if self.previous_size != curr_size:
 
-				height = self.winfo_height() / 3 - 30
-				width = self.winfo_width() / 2 -50
+				height = self.winfo_height() / 3 - 40
+				width = self.winfo_width() / 2
 
 				# last_plot_height = self.winfo_height() / 3 - 50
 				last_plot_width = self.winfo_width() -50
@@ -154,6 +154,7 @@ class ResidualPlotter(PlotterBase):
 			for plot in self.plots.values():
 
 				plot.clear()
+				plot.adjust_plots(0.1, 0.16, 0.938, 0.88, 0.2, 0.165)
 
 			self.ext_plot.clear()
 

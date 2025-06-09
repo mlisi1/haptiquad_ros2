@@ -23,7 +23,7 @@ class PlotContainer(ttk.Frame):
 		self.fig, self.ax = plt.subplots()  
 		self.ax.grid(True)   
 
-		self.fig.subplots_adjust(0.1, 0.144, 0.938, 0.88, 0.2, 0.165)
+		# self.fig.subplots_adjust(0.15, 0.144, 0.938, 0.88, 0.2, 0.165)
 
 		#Initialize Matplotlib wrappers and place them
 		self.canvas = FigureCanvasTkAgg(self.fig, master = self)
@@ -40,6 +40,10 @@ class PlotContainer(ttk.Frame):
 		self.range = (-5,5)
 		self.autoscroll_x = True
 		self.x_range = 100
+
+	def adjust_plots(self, left, bottom, right, top, wspace, hspace):
+
+		self.fig.subplots_adjust(left, bottom, right, top, wspace, hspace)
 
 
 	#Clears the plot
