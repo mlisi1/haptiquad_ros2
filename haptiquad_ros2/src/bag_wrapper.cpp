@@ -45,6 +45,9 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
 
     }
 
+    GT_F["base_wrench"] = Eigen::VectorXd::Zero(6);
+
+
 
     for (size_t i=0; i<msg->joints.position.size(); i++) {
 
@@ -72,18 +75,12 @@ void BagWrapper::bagCallback(const anymal_msgs::msg::AnymalState::SharedPtr msg)
 
     observer.updateBaseState(v0, orientation);
 
-    current_stamp = rclcpp::Time(msg->header.stamp);
+    current_stamp = rclcpp::Time(msg->header.stamp, last_stamp.get_clock_type());
     dt = (current_stamp - last_stamp).seconds();
 
     std::tie(r_int, r_ext) = observer.getResiduals(dt);
 
     publishResiduals();
-
-    std::map<std::string, bool> is_on_ground;
-
-    for (size_t i=0; i<msg->contacts.size(); i++) {
-        is_on_ground[msg->contacts[i].name] = msg->contacts[i].state;
-    }
 
     estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
