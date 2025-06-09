@@ -37,6 +37,7 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     expected_dt = this->declare_parameter<double>("observer.expected_dt", 0.0);
     threshold = this->declare_parameter<double>("observer.threshold", 0.0); 
     base_link_name = this->declare_parameter<std::string>("estimator.base_link_name", "base");
+    calculate_residual_error = this->declare_parameter<bool>("estimator.calculate_residual_error", false);
 
 
     friction    = this->declare_parameter<bool>("observer.friction.friction", false);
@@ -67,7 +68,7 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Received pinocchio model with " << model.nv << "DOFs");
     RCLCPP_DEBUG_STREAM(this->get_logger(), "======================================================");
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Model inertias:");
-    for (int i=0; i<model.inertias.size(); i++) {
+    for (size_t i=0; i<model.inertias.size(); i++) {
         RCLCPP_DEBUG_STREAM(this->get_logger(), "\n" << model.inertias[i] << "\n");
         RCLCPP_DEBUG_STREAM(this->get_logger(), "----------------------------------");
     }
@@ -102,7 +103,7 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
     joint_names.resize(model.nv-6);
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint names:");
     
-    for (int i=0; i<joint_names.size(); i++) {
+    for (size_t i=0; i<joint_names.size(); i++) {
         joint_names[i] = model.names[i+2];
         RCLCPP_DEBUG_STREAM(this->get_logger(), joint_names[i]);
     }
@@ -177,7 +178,7 @@ void HaptiQuadWrapperBase::publishResidualErrors() {
         residual_error_msg.err_ext[i] = err_ext(i);
     }
 
-    residual_error_msg.stamp = gt_stamp;
+    residual_error_msg.stamp = current_stamp;
     residual_error_publisher->publish(residual_error_msg);
 
 }

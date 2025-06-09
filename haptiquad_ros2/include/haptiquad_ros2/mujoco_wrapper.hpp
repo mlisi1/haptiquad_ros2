@@ -11,7 +11,10 @@
 
 
 using SyncPolicy = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::JointState, nav_msgs::msg::Odometry>;
-using SyncPolicyGT = message_filters::sync_policies::ApproximateTime<geometry_msgs::msg::WrenchStamped, mujoco_msgs::msg::MujocoContacts>;
+using SyncPolicyGT = message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::JointState, 
+                                                                        nav_msgs::msg::Odometry, 
+                                                                        geometry_msgs::msg::WrenchStamped, 
+                                                                        mujoco_msgs::msg::MujocoContacts>;
 
 
 class MujocoWrapper : public HaptiQuadWrapperBase {
@@ -23,8 +26,10 @@ class MujocoWrapper : public HaptiQuadWrapperBase {
         void mujocoCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
                             const nav_msgs::msg::Odometry::ConstSharedPtr &odom);
 
-        void mujocoGTCallback(const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench,
-                            const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts);
+        void mujocoGTCallback(  const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
+                                const nav_msgs::msg::Odometry::ConstSharedPtr &odom,
+                                const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench,
+                                const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts);
 
 
     private:

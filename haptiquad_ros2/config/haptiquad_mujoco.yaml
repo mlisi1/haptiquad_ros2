@@ -6,9 +6,12 @@ haptiquad_ros2:
       k_int: 50.0
       k_ext: 50.0
 
-      rescale: false
+      rescale: true
+      expected_dt: 0.024
+      threshold: 0.03
 
     estimator:
 
       num_contacts: 4
       base_link_name : "base"
+      calculate_residual_error: false

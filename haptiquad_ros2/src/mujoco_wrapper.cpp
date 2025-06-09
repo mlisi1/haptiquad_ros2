@@ -20,24 +20,37 @@ MujocoWrapper::MujocoWrapper() : HaptiQuadWrapperBase() {
 
     mujoco_gt_sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicyGT>>(
         SyncPolicyGT(10), 
+        joint_state_sub_, 
+        odom_sub_,
         mujoco_wrench_sub_,
         mujoco_contacts_sub_
     );
 
-    mujoco_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoCallback, 
+
+    if (calculate_residual_error) {
+
+        mujoco_gt_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoGTCallback, 
+                                    this, 
+                                    std::placeholders::_1, 
+                                    std::placeholders::_2,
+                                    std::placeholders::_3,
+                                    std::placeholders::_4)
+        );
+
+    } else {
+
+        mujoco_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoCallback, 
                                     this, 
                                     std::placeholders::_1, 
                                     std::placeholders::_2)
-    );
+        );
 
-
-    mujoco_gt_sync_->registerCallback(std::bind(&MujocoWrapper::mujocoGTCallback, 
-                                    this, 
-                                    std::placeholders::_1, 
-                                    std::placeholders::_2)
-    );
+    }   
 
 }
+
+
+
 
 
 
@@ -51,7 +64,7 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     if (first_message) {
 
-        last_stamp = joint_state->header.stamp; 
+        last_stamp = joint_state->header.stamp;
         first_message = false;
         return;
 
@@ -83,8 +96,9 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
 
     observer.updateBaseState(v0, orientation);
+    
+    current_stamp = rclcpp::Time(joint_state->header.stamp, last_stamp.get_clock_type());
 
-    current_stamp = rclcpp::Time(joint_state->header.stamp);
     dt = (current_stamp - last_stamp).seconds();
 
     std::tie(r_int, r_ext) = observer.getResiduals(dt);
@@ -97,7 +111,7 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     publishForces();
 
-    last_stamp = joint_state->header.stamp;
+    last_stamp = current_stamp;
 
 
 }
@@ -106,21 +120,27 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
 
 
-void MujocoWrapper::mujocoGTCallback(const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench,
-                            const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts) {
+void MujocoWrapper::mujocoGTCallback(const sensor_msgs::msg::JointState::ConstSharedPtr &joint_state,
+                                    const nav_msgs::msg::Odometry::ConstSharedPtr &odom,
+                                    const geometry_msgs::msg::WrenchStamped::ConstSharedPtr &base_wrench,
+                                    const mujoco_msgs::msg::MujocoContacts::ConstSharedPtr &contacts) {
 
      if (!description_received) {
         RCLCPP_ERROR_STREAM(this->get_logger(), "Robot description was not yet received");
         return;
     }
 
+    mujocoCallback(joint_state, odom);
 
-    current_stamp = rclcpp::Time(base_wrench->header.stamp);
+    if (gt_first_message) {
+        gt_first_message = false;
+        return;
+    }
 
     for (int i=0; i<num_contacts; i++) {
         GT_F[feet_frames[i]] = Eigen::VectorXd::Zero(6);
     }
-
+    GT_F["base_wrench"] = Eigen::VectorXd::Zero(6);
 
     for (size_t i=0; i<contacts->contacts.size(); i++) {
         std::string contact_name = contacts->contacts[i].object2_name;
@@ -137,12 +157,12 @@ void MujocoWrapper::mujocoGTCallback(const geometry_msgs::msg::WrenchStamped::Co
 
     }
 
-
-    if (current_stamp != gt_stamp) {
-
-        RCLCPP_WARN_STREAM(this->get_logger(), "Time mismatch between estimation and real values");
-
-    }
+    GT_F["base_wrench"] <<  base_wrench->wrench.force.x,
+                            base_wrench->wrench.force.y,
+                            base_wrench->wrench.force.z,
+                            base_wrench->wrench.torque.x,
+                            base_wrench->wrench.torque.y,
+                            base_wrench->wrench.torque.z;
 
 
     std::tie(gt_r_int, gt_r_ext) = estimator.calculateResidualsFromForces(GT_F);

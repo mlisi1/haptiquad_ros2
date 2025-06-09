@@ -43,7 +43,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
     protected:
 
         bool description_received = false;
-        bool first_message = true;
+        bool first_message, gt_first_message = true;
 
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr description_sub;
         rclcpp::Subscription<haptiquad_msgs::msg::ObserverGains>::SharedPtr gains_sub;
@@ -62,7 +62,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         std::map<std::string, double> msg_velocity_dict;
         std::map<std::string, double> msg_torques_dict;
 
-        rclcpp::Time last_stamp, current_stamp, gt_stamp;
+        rclcpp::Time last_stamp, current_stamp;
         double dt;
 
         Eigen::VectorXd r_int, r_ext;
@@ -81,6 +81,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
 
         //PARAMETERS
         std::string base_link_name;
+        bool calculate_residual_error;
 
         //Time rescaling
         int num_contacts = 0;
