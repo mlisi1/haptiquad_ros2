@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from haptiquad_plot.libs import PlotterBase
 from haptiquad_plot.libs import PlotContainer
+from haptiquad_plot.libs.residual_dialogs import SaveDialog
 import rclpy
 from tkinter import ttk
 import tkinter as tk
@@ -173,13 +174,13 @@ class ResidualPlotter(PlotterBase):
 
 
 
-	def proces_mode_int(self, i):
+	def proces_mode_int(self, i, err):
 
 		key = self.legs_prefix[i]
 		labels = self.joint_labels[key]
 		pause = self.pause.get()
 
-		if self.show_err.get():
+		if err:
 
 			to_plot = self.err_int[key] if not pause else self.frozen_data['err_int'][key]
 			time = self.err_time if not pause else self.frozen_data['err_time']
@@ -194,10 +195,10 @@ class ResidualPlotter(PlotterBase):
 		return to_plot, time, labels, title
 	
 
-	def proces_mode_ext(self):
-
+	def proces_mode_ext(self, err):
+		labels = force_labels
 		pause = self.pause.get()
-		if self.show_err.get():
+		if err:
 
 			to_plot = self.err_ext if not pause else self.frozen_data['err_ext']
 			time = self.err_time if not pause else self.frozen_data['err_time']
@@ -209,7 +210,7 @@ class ResidualPlotter(PlotterBase):
 			time = self.time if not pause else self.frozen_data['time']
 			title = "External Residual"
 
-		return to_plot, time, title
+		return to_plot, time, labels, title
 
 
 	def update_plots(self):
@@ -236,9 +237,11 @@ class ResidualPlotter(PlotterBase):
 			for plt in self.plots.values():
 				plt.clear()
 
+		err = self.show_err.get()
+
 		for i in range(4):
 
-			to_plot, time, labels, title = self.proces_mode_int(i)
+			to_plot, time, labels, title = self.proces_mode_int(i, err)
 
 			if not to_plot.shape[1] == time.shape[0]:
 				continue
@@ -247,13 +250,13 @@ class ResidualPlotter(PlotterBase):
 												xlabel="Time [s]", ylabel="Momentum [Nm]", time = time,
 												title=title)
 
-		to_plot, time, title = self.proces_mode_ext()
+		to_plot, time, labels, title = self.proces_mode_ext(err)
 
 	
 		if not time.shape[0] == to_plot.shape[1]:
 			return
 		
-		self.plots['External'].update_plot(to_plot, force_labels, xlabel="Time [s]", ylabel="Force [N]", time = time, title = title)
+		self.plots['External'].update_plot(to_plot, labels, xlabel="Time [s]", ylabel="Force [N]", time = time, title = title)
 
 
 
@@ -331,6 +334,11 @@ class ResidualPlotter(PlotterBase):
 
 		if self.err_time.shape[0] > self.limit:
 				self.err_time = self.err_time[1:]
+
+
+	def save_plots(self):
+		
+		SaveDialog(self, self.frozen_data)
 
 
 

@@ -1,5 +1,4 @@
 from ament_index_python.packages import get_package_share_directory
-from haptiquad_plot.libs.dialogs import SaveDialog
 import tkinter as tk
 from tkinter import ttk
 from rclpy.node import Node
@@ -215,7 +214,7 @@ class PlotterBase(Node, tk.Tk):
 
 	def save_plots(self):
 
-		SaveDialog(self, self.frozen_data)
+		pass
 
 
 

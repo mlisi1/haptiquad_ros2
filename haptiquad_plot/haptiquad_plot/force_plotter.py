@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from haptiquad_plot.libs import PlotterBase
 from haptiquad_plot.libs import PlotContainer
+from haptiquad_plot.libs.force_dialogs import SaveDialog
 import rclpy
 from tkinter import ttk
 import tkinter as tk
@@ -639,10 +640,10 @@ class ForcePlotter(PlotterBase):
 
 
 
-	def process_mode(self, i):
+	def process_mode(self, i, mode):
 
 		key = self.foot_names[i]
-		mode = self.mode.get()
+		# mode = self.mode.get()
 		labels = force_labels
 		colors = None		
 		style = None
@@ -743,17 +744,23 @@ class ForcePlotter(PlotterBase):
 			del self.frozen_data
 			self.frozen_data = None
 
+		mode = self.mode.get()
+
 
 		for i, plot in enumerate(self.plots.values()):		
 
 
-			to_plot, title, labels, colors, time, style, xlabel, ylabel = self.process_mode(i)			
+			to_plot, title, labels, colors, time, style, xlabel, ylabel = self.process_mode(i, mode)			
 
 			if not time.shape[0] == to_plot.shape[1]:
 
 				continue
 
 			plot.update_plot(to_plot, labels, title=title, xlabel= xlabel, ylabel=ylabel, time = time, color=colors, style=style)
+
+	def save_plots(self):
+
+		SaveDialog(self, self.frozen_data)
 
 
 
