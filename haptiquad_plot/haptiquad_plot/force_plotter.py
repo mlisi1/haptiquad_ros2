@@ -170,7 +170,7 @@ class ForcePlotter(PlotterBase):
 		ttk.Separator(self, orient=tk.VERTICAL).grid(row = 0, column=8, sticky="ns", pady = 5, padx = 1)
 
 		self.mode = tk.IntVar()
-		self.mode.set(2)
+		self.mode.set(5)
 
 		ttk.Label(self, text="Mode:").grid(row = 0, column=9, sticky="ns", pady = 5, padx = (0, 0))
 
@@ -253,8 +253,6 @@ class ForcePlotter(PlotterBase):
 		if not self.listening:
 			return
 		[gt, est] = msgs
-		ngt = {}
-		nest = {}
 
 		for c in gt.contacts:
 
@@ -267,7 +265,6 @@ class ForcePlotter(PlotterBase):
 					c.wrench.torque.z	
 				]).reshape((6,1)) 
 
-			ngt[c.name] = np.linalg.norm(f[0:2])
 			self.gt[c.name] = np.hstack((self.gt[c.name], f))
 			self.gt_est[c.name] = np.hstack((self.gt_est[c.name], np.zeros((6,1))))
 			self.gt_est[c.name][0][-1] = f[0][0]
@@ -286,8 +283,6 @@ class ForcePlotter(PlotterBase):
 			
 
 		wrench = np.zeros((6,1))
-		ngt["base_force"] = 0.0
-		ngt["base_torque"] = 0.0
 		self.gt["base_force"] = np.hstack((self.gt["base_force"], wrench))
 		self.gt["base_torque"] = np.hstack((self.gt["base_torque"], wrench))
 		self.gt_est["base_force"] = np.hstack((self.gt_est["base_force"], np.zeros((6,1))))
@@ -313,7 +308,6 @@ class ForcePlotter(PlotterBase):
 					est.forces[j].torque.z,
 				]).reshape((6,1))
 			
-			nest[est.names[j].data] = np.linalg.norm(force[0:2])
 			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
 			self.gt_est[est.names[j].data][1][-1] = force[0][0]
 			self.gt_est[est.names[j].data][3][-1] = force[1][0]
@@ -341,9 +335,6 @@ class ForcePlotter(PlotterBase):
 					0.0,
 				]).reshape((6,1))
 		
-		nest["base_force"] = np.linalg.norm(base_force[0:2])
-		nest["base_torque"] = np.linalg.norm(base_torque[0:2])
-
 		self.forces["base_force"] = np.hstack((self.forces["base_force"], base_force))
 		self.gt_est["base_force"][1][-1] = base_force[0][0]
 		self.gt_est["base_force"][3][-1] = base_force[1][0]
@@ -361,7 +352,7 @@ class ForcePlotter(PlotterBase):
 			self.forces["base_torque"] = self.forces["base_torque"][:, 1:]
 			self.gt_est["base_torque"] = self.gt_est["base_torque"][:, 1:]
 
-		self.update_stats(ngt, nest)
+		self.update_stats()
 		
 
 	def mujoco_callback(self, *msgs):
@@ -370,9 +361,6 @@ class ForcePlotter(PlotterBase):
 			return
 		
 		[mujoco, wrench, est] = msgs
-
-		ngt = {}
-		nest = {}
 
 		gt_contacts = {}
 
@@ -401,8 +389,6 @@ class ForcePlotter(PlotterBase):
 				continue		
 						
 			f = gt_contacts[key]
-
-			ngt[key] = np.linalg.norm(f[0:2])
 			
 			t = mujoco.header.stamp.sec + 1e-9 * mujoco.header.stamp.nanosec
 			if self.start_time == None:
@@ -432,9 +418,6 @@ class ForcePlotter(PlotterBase):
 		
 		self.gt["base_force"] = np.hstack((self.gt["base_force"], base_f))
 		
-		ngt["base_force"] = np.linalg.norm(f[0:2])
-
-
 		base_t = np.array([
 					wrench.wrench.torque.x,	
 					wrench.wrench.torque.y,	
@@ -446,8 +429,6 @@ class ForcePlotter(PlotterBase):
 		
 		self.gt["base_torque"] = np.hstack((self.gt["base_torque"], base_t))
 		
-		ngt["base_torque"] = np.linalg.norm(f[0:2])
-
 		if self.gt["base_force"].shape[1] > self.limit:
 
 				self.gt["base_force"] = self.gt["base_force"][:,1:]
@@ -485,7 +466,6 @@ class ForcePlotter(PlotterBase):
 					est.forces[j].torque.z,
 				]).reshape((6,1))
 			
-			nest[est.names[j].data] = np.linalg.norm(force[0:2])
 			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
 			self.gt_est[est.names[j].data][1][-1] = force[0][0]
 			self.gt_est[est.names[j].data][3][-1] = force[1][0]
@@ -512,9 +492,6 @@ class ForcePlotter(PlotterBase):
 					0.0,
 				]).reshape((6,1))
 		
-		nest["base_force"] = np.linalg.norm(base_force[0:2])
-		nest["base_torque"] = np.linalg.norm(base_torque[0:2])
-
 		self.forces["base_force"] = np.hstack((self.forces["base_force"], base_force))
 		self.gt_est["base_force"][1][-1] = base_force[0][0]
 		self.gt_est["base_force"][3][-1] = base_force[1][0]
@@ -532,11 +509,11 @@ class ForcePlotter(PlotterBase):
 			self.forces["base_torque"] = self.forces["base_torque"][:, 1:]
 			self.gt_est["base_torque"] = self.gt_est["base_torque"][:, 1:]
 
-		self.update_stats(ngt, nest)
+		self.update_stats()
 		
 
 
-	def process_gazebo_contact(self, msg, key, ngt):
+	def process_gazebo_contact(self, msg, key):
 
 		if len(msg.states) > 0:
 
@@ -554,7 +531,6 @@ class ForcePlotter(PlotterBase):
 			f = np.zeros(6).reshape((6,1))
 		
 		self.gt[key] = np.hstack((self.gt[key], f))
-		ngt[key] = np.linalg.norm(f[0:2])
 
 		self.gt_est[key] = np.hstack((self.gt_est[key], np.zeros((6,1))))
 		self.gt_est[key][0][-1] = f[0][0]
@@ -572,7 +548,6 @@ class ForcePlotter(PlotterBase):
 
 			self.gt[key] = self.gt[key][:,1:]
 		
-		return ngt
 
 
 
@@ -583,13 +558,11 @@ class ForcePlotter(PlotterBase):
 		
 		[LF, RF, LH, RH, est] = msgs
 
-		ngt = {}
-		nest = {}
 
-		ngt = self.process_gazebo_contact(LF, self.foot_names[0], ngt)
-		ngt = self.process_gazebo_contact(RF, self.foot_names[1], ngt)
-		ngt = self.process_gazebo_contact(LH, self.foot_names[2], ngt)
-		ngt = self.process_gazebo_contact(RH, self.foot_names[3], ngt)
+		self.process_gazebo_contact(LF, self.foot_names[0])
+		self.process_gazebo_contact(RF, self.foot_names[1])
+		self.process_gazebo_contact(LH, self.foot_names[2])
+		self.process_gazebo_contact(RH, self.foot_names[3])
 
 
 		for j in range(4):
@@ -603,7 +576,6 @@ class ForcePlotter(PlotterBase):
 					est.forces[j].torque.z,
 				]).reshape((6,1))
 			
-			nest[est.names[j].data] = np.linalg.norm(force[0:2])
 			self.forces[est.names[j].data] = np.hstack((self.forces[est.names[j].data], force))
 			self.gt_est[est.names[j].data][1][-1] = force[0][0]
 			self.gt_est[est.names[j].data][3][-1] = force[1][0]
@@ -612,13 +584,13 @@ class ForcePlotter(PlotterBase):
 				self.forces[est.names[j].data] = self.forces[est.names[j].data][:, 1:]
 				self.gt_est[est.names[j].data] = self.gt_est[est.names[j].data][:, 1:]
 
-		self.update_stats(ngt, nest)
+		self.update_stats()
 
 
 
 
 
-	def update_stats(self, ngt, nest):
+	def update_stats(self):
 
 		for i in range(6):
 
@@ -630,7 +602,7 @@ class ForcePlotter(PlotterBase):
 
 			self.rmse[key] = np.hstack((self.rmse[key], np.sqrt(mse)))
 
-			self.norm[key] = np.append(self.norm[key], ngt[key] - nest[key])
+			self.norm[key] = np.append(self.norm[key], np.linalg.norm(self.gt[key][0:2,-1] - self.forces[key][0:2,-1]))
 
 			if self.rmse[key].shape[1] > self.limit:
 
