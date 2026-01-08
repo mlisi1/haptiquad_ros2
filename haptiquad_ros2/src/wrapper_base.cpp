@@ -216,3 +216,18 @@ void HaptiQuadWrapperBase::publishForces() {
 
 }
 
+
+
+
+
+double HaptiQuadWrapperBase::computeAverageProcessingTime() {
+
+    if (processing_times.empty()) {
+        return 0.0;
+    }
+    double sum = 0.0;
+    for (const auto& d : processing_times) {
+        sum += d.count();
+    }
+    return sum / processing_times.size();
+}

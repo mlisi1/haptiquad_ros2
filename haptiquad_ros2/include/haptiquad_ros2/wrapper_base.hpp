@@ -18,6 +18,8 @@
 
 #include <Eigen/Dense>
 #include <vector>
+#include <chrono>
+#include <numeric>
 
 
 class HaptiQuadWrapperBase: public rclcpp::Node {
@@ -30,14 +32,14 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
 
         void descriptionCallback(const std_msgs::msg::String::SharedPtr msg);
         void gainsCallback(const haptiquad_msgs::msg::ObserverGains::SharedPtr msg);
-        void frictionCallback(const haptiquad_msgs::msg::FrictionParameters::SharedPtr msg);
-
+        void frictionCallback(const haptiquad_msgs::msg::FrictionParameters::SharedPtr msg);   
 
     protected:
     
         void publishResiduals();
         void publishForces();
         void publishResidualErrors();
+        double computeAverageProcessingTime();
 
 
     protected:
@@ -72,7 +74,11 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         std::map<std::string, Eigen::VectorXd> GT_F;
 
         std::vector<std::string> joint_names, feet_frames;
-   
+
+        //Performance monitoring
+        std::chrono::high_resolution_clock::time_point start_time, end_time;
+        std::chrono::duration<double, std::milli> processing_time;
+        std::vector<std::chrono::duration<double, std::milli>> processing_times;
         
 
         haptiquad::MomentumObserver observer;

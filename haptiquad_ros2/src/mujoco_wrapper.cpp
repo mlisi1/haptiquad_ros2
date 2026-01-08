@@ -101,6 +101,8 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     dt = (current_stamp - last_stamp).seconds();
 
+    start_time = std::chrono::high_resolution_clock::now();
+
     std::tie(r_int, r_ext) = observer.getResiduals(dt);
 
     publishResiduals();
@@ -108,6 +110,13 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
     estimator.updateJacobians(msg_position_dict, observer.getF(), observer.getIC());
 
     F = estimator.calculateForces(r_int, r_ext, orientation);
+
+    end_time = std::chrono::high_resolution_clock::now();
+    processing_time = end_time - start_time;
+    processing_times.push_back(processing_time);
+
+    double avg_time = computeAverageProcessingTime();
+    RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), rclcpp::Duration::from_seconds(1.0).nanoseconds()/1000000, "Average processing time: " << avg_time << " ms");
 
     publishForces();
 
