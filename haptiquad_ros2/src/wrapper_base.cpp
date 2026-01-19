@@ -38,6 +38,8 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     threshold = this->declare_parameter<double>("observer.threshold", 0.0); 
     base_link_name = this->declare_parameter<std::string>("estimator.base_link_name", "base");
     calculate_residual_error = this->declare_parameter<bool>("estimator.calculate_residual_error", false);
+    mass_scaling = this->declare_parameter<double>("estimator.mass_scaling", 1.0);
+    inertia_scaling = this->declare_parameter<double>("estimator.inertia_scaling", 1.0);
 
 
     friction    = this->declare_parameter<bool>("observer.friction.friction", false);
@@ -64,6 +66,13 @@ void HaptiQuadWrapperBase::descriptionCallback(const std_msgs::msg::String::Shar
 
     pinocchio::Model model;
     pinocchio::urdf::buildModelFromXML(msg->data, model);
+
+
+    for (auto & inertia : model.inertias)
+    {
+        inertia.mass() *= mass_scaling;
+        inertia.inertia() *= inertia_scaling;  
+    }
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Received pinocchio model with " << model.nv << "DOFs");
     RCLCPP_DEBUG_STREAM(this->get_logger(), "======================================================");

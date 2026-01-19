@@ -104,4 +104,11 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         double sigma1 = 0.0;  // Damping coefficient [Nm·s/rad]
         double sigma2 = 0.0;    // Viscous friction coefficient [Nm·s/rad]
         double alpha  = 0.0;    // Transition parameter [s/rad]
+
+
+        //Mass/Inertia scaline (for evalutation purposes)
+        double mass_scaling = 1.0;
+        double inertia_scaling = 1.0;
+
+
 };
