@@ -20,6 +20,7 @@
 #include <vector>
 #include <chrono>
 #include <numeric>
+#include <random>
 
 
 class HaptiQuadWrapperBase: public rclcpp::Node {
@@ -40,6 +41,7 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         void publishForces();
         void publishResidualErrors();
         double computeAverageProcessingTime();
+        bool burstLossDropMessage();
 
 
     protected:
@@ -109,6 +111,22 @@ class HaptiQuadWrapperBase: public rclcpp::Node {
         //Mass/Inertia scaline (for evalutation purposes)
         double mass_scaling = 1.0;
         double inertia_scaling = 1.0;
+
+
+
+        //Message Drop Probabilities (for testing robustness)
+        double drop_prob = 0.0;
+        std::mt19937 rng_;
+        std::uniform_real_distribution<double> uniform_dist_;
+
+
+        // Gilbert–Elliott burst-loss model parameters
+        double drop_prob_good_;         // Low drop probability in Good state
+        double drop_prob_bad_;          // High drop probability in Bad state
+        double p_good_to_bad_;          // Chance to switch from Good to Bad
+        double p_bad_to_good_;          // Chance to switch from Bad to Good
+        bool in_good_state_;
+
 
 
 };

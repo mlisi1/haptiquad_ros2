@@ -70,6 +70,18 @@ void MujocoWrapper::mujocoCallback(const sensor_msgs::msg::JointState::ConstShar
 
     }
 
+    double r = uniform_dist_(rng_);
+    if (r < drop_prob)
+    {
+        RCLCPP_WARN(this->get_logger(), "Message dropped!");
+        return; // simply discard
+    }
+
+
+    if (burstLossDropMessage()) {
+        return;
+    }
+
 
     for (size_t i=0; i<joint_state->position.size(); i++) {
 

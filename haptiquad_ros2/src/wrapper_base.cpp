@@ -38,9 +38,15 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     threshold = this->declare_parameter<double>("observer.threshold", 0.0); 
     base_link_name = this->declare_parameter<std::string>("estimator.base_link_name", "base");
     calculate_residual_error = this->declare_parameter<bool>("estimator.calculate_residual_error", false);
-    mass_scaling = this->declare_parameter<double>("estimator.mass_scaling", 1.0);
-    inertia_scaling = this->declare_parameter<double>("estimator.inertia_scaling", 1.0);
+    mass_scaling = this->declare_parameter<double>("evaluation.mass_scaling", 1.0);
+    inertia_scaling = this->declare_parameter<double>("evaluation.inertia_scaling", 1.0);
+    drop_prob = this->declare_parameter<double>("evaluation.drop_prob", 0.0);
 
+    drop_prob_good_    = this->declare_parameter<double>("evaluation.drop_prob_good", 0.0);
+    drop_prob_bad_     = this->declare_parameter<double>("evaluation.drop_prob_bad", 0.0);
+    p_good_to_bad_     = this->declare_parameter<double>("evaluation.p_good_to_bad", 0.0);
+    p_bad_to_good_     = this->declare_parameter<double>("evaluation.p_bad_to_good", 0.0);
+    in_good_state_     = true;
 
     friction    = this->declare_parameter<bool>("observer.friction.friction", false);
     F_s         = this->declare_parameter<double>("observer.friction.F_s", 0.0);    
@@ -49,6 +55,8 @@ HaptiQuadWrapperBase::HaptiQuadWrapperBase() : rclcpp::Node("haptiquad_ros2") {
     observer.setFrictionParameters(friction, F_s, F_c); 
     estimator.setBaseFrame(base_link_name);
 
+    rng_.seed(std::random_device{}());
+    uniform_dist_ = std::uniform_real_distribution<double>(0.0, 1.0);
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Initialized base wrapper");
 
@@ -239,4 +247,35 @@ double HaptiQuadWrapperBase::computeAverageProcessingTime() {
         sum += d.count();
     }
     return sum / processing_times.size();
+}
+
+
+
+
+
+
+
+bool HaptiQuadWrapperBase::burstLossDropMessage()
+{
+    double r = uniform_dist_(rng_);
+    double current_drop_prob = in_good_state_ ? drop_prob_good_ : drop_prob_bad_;
+
+    if (in_good_state_)
+    {
+        if (r < p_good_to_bad_) in_good_state_ = false;
+    }
+    else
+    {
+        if (r < p_bad_to_good_) in_good_state_ = true;
+    }
+
+    // Decide whether to drop the message
+    double drop_prob = in_good_state_ ? drop_prob_good_ : drop_prob_bad_;
+    if (uniform_dist_(rng_) < drop_prob)
+    {
+        RCLCPP_WARN(this->get_logger(), "Message dropped (burst model)!");
+        return true;
+    }
+
+    return false;
 }
